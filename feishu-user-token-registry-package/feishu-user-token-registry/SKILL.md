@@ -24,7 +24,7 @@ Before running this skill, the administrator must manually finish:
 
 - Configure the Feishu app OAuth redirect/callback URL. This must be the real callback or form receiver URL used by your token collection flow.
 - Enable the required tenant/user scopes for calendar, direct messages, group messages, tasks, minutes, docs/search, mail, contact, and `offline_access`.
-- Set app availability for all members or the target members who need authorization.
+- Set app availability for all members, or configure availability so later authorization members can use the app. This setup check must not require a target member list.
 - Publish the Feishu app.
 - Create or copy the member token storage Bitable.
 - Configure fields: `成员`, `应用ID`, `应用秘钥`, `授权链接`, `回调地址`, `授权码`, `user_access_token`, `refresh_token`, `授权状态`, `授权时间`, `过期时间`.
@@ -39,6 +39,8 @@ Do not refuse to send an authorization card only because `app_secret` is stored 
 Do not write real secrets into GitHub, this skill package source, logs, or public docs. Read them only at runtime from the token table, runtime config, or explicit administrator input.
 
 Important: `app_secret` is not required for sending the authorization card. The authorization-card command only needs `APP_ID` and the real `FEISHU_AUTH_REDIRECT_URI`. `app_secret` is required later for code-to-token exchange after the member authorizes.
+
+Important: target member name/open_id is not required during installation or setup verification. Ask for or resolve a target member only after the administrator explicitly says to send an authorization card to that person. Asking for `TARGET_USER_OPEN_ID` during install, setup confirmation, placeholder filling, or token table verification is invalid behavior.
 
 ## Runtime Placeholders
 
@@ -60,6 +62,8 @@ TOKEN_TABLE_ID={TOKEN_TABLE_ID}
 ```bash
 feishu-user-registry auth <open_id> "<member_name>"
 ```
+
+Run this command only after the administrator asks to send an authorization card to a specific member.
 
 Flow:
 

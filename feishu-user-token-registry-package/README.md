@@ -26,7 +26,7 @@ The administrator must manually configure:
 
 - Feishu app OAuth redirect/callback URL. This must be the real callback or form receiver URL used by your token collection flow.
 - Required tenant/user scopes for calendar, messages, chat, task, minutes, search/docs, mail, contact, and `offline_access`.
-- App availability for target members.
+- App availability for all members, or availability configured so later authorization members can use the app. This setup check must not require a target member list.
 - App publishing.
 - Member token storage Bitable fields:
   `成员`, `应用ID`, `应用秘钥`, `授权链接`, `回调地址`, `授权码`, `user_access_token`, `refresh_token`, `授权状态`, `授权时间`, `过期时间`.
@@ -52,6 +52,8 @@ Security boundary:
 ## Agent Responsibilities
 
 The Agent may install this package first, but it must wait for administrator confirmation before sending authorization cards.
+
+Installation and setup verification do not require any target member name or open_id. Target member resolution happens only after the administrator explicitly asks to send an authorization card to a specific person. Asking for `TARGET_USER_OPEN_ID` during install or setup verification is invalid behavior.
 
 After manual setup is complete, the Agent should:
 

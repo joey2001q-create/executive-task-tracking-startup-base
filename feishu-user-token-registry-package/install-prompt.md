@@ -29,6 +29,8 @@ Agent installs registry
 9. Never write real `app_secret`, user tokens, refresh tokens, Base Tokens, Table IDs, or authorization codes into GitHub, skill source files, zip package source, logs, or public docs.
 10. Do not require `LARK_APP_SECRET` / `FEISHU_APP_SECRET` before sending an authorization card. The authorization-card step only needs `APP_ID` and the real `FEISHU_AUTH_REDIRECT_URI`.
 11. `app_secret` is needed later for code-to-token exchange, and may be read from the controlled Bitable config row, runtime config, or explicit administrator input.
+12. Do not ask for a target member name or open_id during installation or setup verification.
+13. Ask for or resolve the target member only after the administrator explicitly says "send an authorization card to XX".
 
 ## Step 1: Install Registry
 
@@ -48,6 +50,8 @@ test -f /home/gem/workspace/agent/skills/feishu-user-token-registry/bin/feishu-u
 
 After this step, stop in "waiting for administrator manual setup" state.
 
+Do not ask for a target member at this stage.
+
 ## Step 2: Wait For Manual Feishu Setup
 
 Ask the administrator to confirm all items are complete:
@@ -55,7 +59,7 @@ Ask the administrator to confirm all items are complete:
 - Feishu app OAuth redirect/callback URL is configured.
 - The configured callback/form receiver URL is available in the token table, runtime config, or explicit administrator input.
 - Required tenant and user scopes are imported and enabled.
-- App availability is configured for target members.
+- App availability is configured for all members, or it is configured so later authorization members can use the app. Do not require a target member list for this check.
 - Feishu app is published.
 - Member token storage Bitable is created or copied.
 - Required token table fields are created.
@@ -65,6 +69,8 @@ Ask the administrator to confirm all items are complete:
 Do not send authorization cards before all items above are confirmed.
 
 The app secret may be stored in a dedicated configuration row in the administrator-controlled token Bitable. The Agent may read it from there at runtime.
+
+Do not ask for a target member during setup confirmation. Setup confirmation only verifies app/table/config readiness.
 
 ## Step 3: Fill Runtime Placeholders
 
@@ -130,6 +136,13 @@ feishu-user-registry auth <open_id> "<member_name>"
 ```
 
 Do not block this command only because `LARK_APP_SECRET` is not currently exported. This command only builds the OAuth URL and sends the card.
+
+Target member handling:
+
+- Before the administrator asks "send an authorization card to XX", do not ask for member name or open_id.
+- After the administrator asks "send an authorization card to XX", resolve XX to `open_id` from Feishu contacts or ask the administrator for that one target's open_id.
+- Do not ask for a batch of target members during installation.
+- Invalid behavior: asking for `TARGET_USER_OPEN_ID`, target member `open_id`, or target member details during install, manual setup confirmation, runtime placeholder filling, or token table structure verification.
 
 The member clicks the authorization card. The returned authorization link/code is processed by the Agent and the token fields are written to the token table.
 
