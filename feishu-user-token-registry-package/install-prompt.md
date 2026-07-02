@@ -1,15 +1,30 @@
 # Feishu User Token Registry Install Prompt
 
-You received `feishu-user-token-registry-package.zip`. This is a prerequisite package for executive tracking and task tracking.
+You received `feishu-user-token-registry-package.zip`. This is the prerequisite authorization package for executive tracking and task tracking.
+
+## Correct Flow
+
+```text
+Agent installs registry
+-> Administrator manually configures Feishu app and Bitable
+-> Administrator says "send an authorization card to XX"
+-> Agent sends the authorization card
+-> Member authorizes and token is written to Bitable
+-> Agent verifies the token table
+-> Agent installs skills-package-v6
+-> Agent creates the task-tracking cron job
+-> Administrator tests executive-tracking and task-tracking by conversation
+```
 
 ## Rules
 
-1. Install only `feishu-user-token-registry`.
+1. Install only `feishu-user-token-registry` from this package.
 2. Do not install executive tracking or task tracking from this package.
-3. Do not hardcode App ID, App Secret, Base Token, Table ID, or form URLs.
-4. The administrator must manually complete Feishu app and Bitable setup before authorization is considered ready.
+3. Do not hardcode App ID, App Secret, Base Token, Table ID, authorization URLs, or user tokens.
+4. The Agent may install this package before manual Feishu setup is complete.
+5. The Agent must not send authorization cards until the administrator confirms manual Feishu app and Bitable setup is complete.
 
-## Step 1: Extract
+## Step 1: Install Registry
 
 ```bash
 mkdir -p /home/gem/workspace/agent/skills
@@ -25,52 +40,78 @@ test -f /home/gem/workspace/agent/skills/feishu-user-token-registry/SKILL.md
 test -f /home/gem/workspace/agent/skills/feishu-user-token-registry/bin/feishu-user-registry
 ```
 
-## Step 2: Manual Feishu App Setup
+After this step, stop in "waiting for administrator manual setup" state.
+
+## Step 2: Wait For Manual Feishu Setup
 
 Ask the administrator to confirm all items are complete:
 
 - OAuth callback URL configured: `https://open.feishu.cn/open-apis/auth/v1/callback`
-- Required scopes imported and enabled
-- App availability configured
-- App published
-- Member token storage Bitable created/copied
-- Required fields created
-- Bot has management permission on the Bitable
+- Required tenant and user scopes imported and enabled
+- App availability configured for target members
+- Feishu app published
+- Member token storage Bitable created or copied
+- Required token table fields created
+- Bot has management permission on the token storage Bitable
+- App ID, App Secret, Token Base Token, and Token Table ID are available
+
+Do not send authorization cards before all items above are confirmed.
 
 ## Step 3: Fill Runtime Placeholders
 
-Read the administrator-provided Bitable/config and set:
+Read the administrator-provided config and set runtime values:
 
 ```text
 LARK_APP_ID={APP_ID}
 LARK_APP_SECRET={APP_SECRET}
-FEISHU_AUTH_REDIRECT_URI={FEISHU_AUTH_REDIRECT_URI}
+FEISHU_AUTH_REDIRECT_URI=https://open.feishu.cn/open-apis/auth/v1/callback
 TOKEN_BASE_TOKEN={TOKEN_BASE_TOKEN}
 TOKEN_TABLE_ID={TOKEN_TABLE_ID}
 ```
 
-## Step 4: Verify Token Table
+## Step 4: Verify Token Table Structure
 
 ```bash
 lark-cli --profile {APP_ID} base +field-list --base-token {TOKEN_BASE_TOKEN} --table-id {TOKEN_TABLE_ID} --as bot >/dev/null
 ```
 
-## Step 5: Send Member Authorization
+The token table must contain:
 
-For each target member:
+```text
+成员
+应用ID
+应用秘钥
+授权链接
+回调地址
+授权码
+user_access_token
+refresh_token
+授权状态
+授权时间
+过期时间
+```
+
+## Step 5: Send Member Authorization Card
+
+Only after manual setup and table verification pass, send authorization cards when the administrator says something like:
+
+```text
+给张三发授权卡片
+```
+
+Command pattern:
 
 ```bash
 feishu-user-registry auth <open_id> "<member_name>"
 ```
 
-The member must click the link and submit/copy the returned authorization URL into the token storage flow.
+The member clicks the authorization card. The returned authorization link/code is processed by the Agent and the token fields are written to the token table.
 
-## Step 6: Final Verification
+## Step 6: Verify Token Rows
 
-The prerequisite is complete only when the token table has:
+The prerequisite is complete only when each target member has:
 
 ```text
-授权码
 user_access_token
 refresh_token
 授权状态=有效

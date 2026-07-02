@@ -130,17 +130,18 @@ def check_overdue(task):
 - **状态没变 + 报告也没提**：不追加记录（避免噪音）
 - **报告里信息不足**（无明确动作）：标记"待复核"，不自动改状态
 
-## 已部署的定时巡检 cron
+## 安装时创建的定时巡检 cron
 
-已创建 cron job：
+安装 `skills-package-v6` 时由 Agent 创建 cron job。不要在 skill 包里写死 job id。
+
 - **名称**：任务巡检与状态同步
-- **job id**：`49e916e3-ca91-41f9-bfb2-ce5fe8868836`
+- **job id**：创建成功后记录实际生成的 `TASK_TRACKING_CRON_JOB_ID`
 - **调度**：每天 21:00 (Asia/Shanghai)
 - **会话**：isolated
-- **推送**：黄杰（user:{{BOSS_OPEN_ID}}）
+- **推送**：黄杰（user:{{BOSS_OPEN_ID}}）或管理员指定目标
 - **逻辑**：拉未完成任务 → 按负责人拉原始数据 → AI 判断进展 → 状态变化则更新任务表+追加跟进记录 → 发巡检报告
 
-如需调整时间/推送目标，用 cron update 改 job `49e916e3-ca91-41f9-bfb2-ce5fe8868836`。
+如需调整时间/推送目标，用实际生成的 `TASK_TRACKING_CRON_JOB_ID` 更新 cron。
 
 ## 老板配置项
 

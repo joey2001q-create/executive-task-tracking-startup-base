@@ -5,9 +5,27 @@ You received `skills-package-v6.zip`. This is the official slim business package
 - `executive-tracking`: executive tracking
 - `task-tracking`: task tracking
 
-Recruiting, team vibe, attendance, competitor intelligence, boss daily briefing, customer follow-up, finance, sales, market, and product sub-skills must not be installed or shown.
+## Correct End-To-End Flow
 
-`feishu-user-token-registry` is not included in this package. It must be installed and verified first through the standalone `feishu-user-token-registry-package`.
+```text
+Agent installs registry
+-> Administrator manually configures Feishu app and Bitable
+-> Administrator says "send an authorization card to XX"
+-> Agent sends the authorization card
+-> Member authorizes and token is written to Bitable
+-> Agent verifies the token table
+-> Agent installs skills-package-v6
+-> Agent creates the task-tracking cron job
+-> Administrator tests executive-tracking and task-tracking by conversation
+```
+
+This package starts at the `Agent installs skills-package-v6` step. It must not run before the token table has been verified.
+
+## Package Boundary
+
+`feishu-user-token-registry` is not included in this package. It is delivered separately so authorization can be installed, manually configured, and verified first.
+
+Recruiting, team vibe, attendance, competitor intelligence, boss daily briefing, customer follow-up, finance, sales, market, and product sub-skills must not be installed or shown.
 
 ## Rules
 
@@ -15,22 +33,25 @@ Recruiting, team vibe, attendance, competitor intelligence, boss daily briefing,
 2. Stop immediately on verification failure and report the failed step.
 3. Expose only `executive-tracking` and `task-tracking` as business entries.
 4. Install shared/internal collectors automatically, but do not show them as user-selectable skills.
-5. Use only an already verified member token table. Do not create token registry setup inside this package.
-6. Do not hardcode App ID, App Secret, Base Token, Table ID, or authorization URLs.
+5. Use only an already verified member token table.
+6. Do not create token registry setup inside this package.
+7. Do not hardcode App ID, App Secret, Base Token, Table ID, authorization URLs, user tokens, or cron job IDs.
+8. Create the task-tracking cron job during v6 installation, then record the actual generated job ID in runtime notes/config.
 
 ## Step 0: Confirm Prerequisite
 
-Ask the administrator or upstream Agent to confirm that `feishu-user-token-registry-package` has already been verified:
+Ask the administrator or upstream Agent to confirm:
 
 ```text
-Feishu app is configured and published.
+feishu-user-token-registry was installed.
+Feishu app was manually configured and published.
 Member token storage Bitable exists.
 Bot has management permission on the token storage Bitable.
 Target members have valid user_access_token and refresh_token.
 TOKEN_BASE_TOKEN and TOKEN_TABLE_ID are available to this Agent.
 ```
 
-If not confirmed, stop and ask the user to finish the prerequisite package first.
+If not confirmed, stop and ask the user to finish the registry/manual setup flow first.
 
 ## Step 1: Extract
 
@@ -127,7 +148,7 @@ Do not create or install token registry here. Only verify the existing token tab
 lark-cli --profile {APP_ID} base +field-list --base-token {TOKEN_BASE_TOKEN} --table-id {TOKEN_TABLE_ID} --as bot >/dev/null
 ```
 
-The table must already contain the fields:
+The table must already contain:
 
 ```text
 成员
@@ -191,7 +212,9 @@ test -f /home/gem/workspace/agent/skills/feishu-mail-collector/bin/feishu-mail-c
 test ! -d /home/gem/workspace/agent/skills/feishu-user-token-registry
 ```
 
-## Step 10: Configure Task Tracking Cron
+## Step 10: Create Task Tracking Cron
+
+The Agent must create a new cron job during installation. Do not assume an existing job ID.
 
 Default daily inspection time is 21:00 Asia/Shanghai:
 
@@ -207,7 +230,25 @@ payload:
     judge progress/risk/overdue/completion status, update task tables, and generate inspection report.
 ```
 
-## Step 11: Final Verification
+After creation, record:
+
+```text
+TASK_TRACKING_CRON_JOB_ID={generated_job_id}
+TASK_TRACKING_CRON="0 21 * * *"
+TASK_TRACKING_CRON_TZ=Asia/Shanghai
+```
+
+## Step 11: Conversation Tests
+
+Run both business tests by conversation:
+
+```text
+Test executive-tracking for one authorized executive.
+Test task-tracking by creating one small task and verifying it writes to the task table.
+Run or dry-run the task-tracking daily inspection.
+```
+
+## Step 12: Final Verification
 
 ```bash
 find /home/gem/workspace/agent/skills -maxdepth 2 -name SKILL.md | sort
@@ -250,5 +291,6 @@ Final report:
 Installed executive-tracking and task-tracking.
 The member token registry prerequisite was verified before this package.
 Shared Feishu collectors are installed.
+Task-tracking cron was created and its generated job ID was recorded.
 No removed business skills were installed.
 ```

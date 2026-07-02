@@ -5,7 +5,19 @@ This document is for the installation Agent. This package keeps only two busines
 - `executive-tracking`: executive tracking
 - `task-tracking`: task tracking
 
-All other business skills, including recruiting, attendance, competitor intelligence, boss daily briefing, and customer follow-up, are removed.
+## Correct End-To-End Flow
+
+```text
+Agent installs registry
+-> Administrator manually configures Feishu app and Bitable
+-> Administrator says "send an authorization card to XX"
+-> Agent sends the authorization card
+-> Member authorizes and token is written to Bitable
+-> Agent verifies the token table
+-> Agent installs skills-package-v6
+-> Agent creates the task-tracking cron job
+-> Administrator tests executive-tracking and task-tracking by conversation
+```
 
 ## Package Scope
 
@@ -25,11 +37,11 @@ Shared/internal dependencies:
 - `feishu-mail-collector/`
 - `feishu-executive-comparison/`
 
-`feishu-user-token-registry` is intentionally not included. It must be installed and verified through `feishu-user-token-registry-package` before this package is installed.
+`feishu-user-token-registry` is intentionally not included. It must be installed first through `feishu-user-token-registry-package`, then manually configured and verified before this package is installed.
 
 ## Required Variables
 
-Resolve these from the workspace, administrator input, or runtime config:
+Resolve these from administrator input, runtime config, or the verified setup workspace:
 
 ```text
 APP_ID
@@ -65,6 +77,13 @@ refresh_token
 ```
 
 This package only reads the token table. It does not send authorization cards and does not create the token registry table.
+
+## Trigger Model
+
+```text
+executive-tracking: conversation-triggered by default
+task-tracking: conversation-triggered for new tasks, plus daily cron inspection
+```
 
 ## AGENT_ACTION: verify_package_scope
 
@@ -111,7 +130,7 @@ lark-cli --profile {APP_ID} base +base-get --base-token {AGENT_BASE_TOKEN} --as 
 lark-cli --profile {APP_ID} base +field-list --base-token {TOKEN_BASE_TOKEN} --table-id {TOKEN_TABLE_ID} --as bot >/dev/null
 ```
 
-The Agent should also verify that target members have valid token rows before running tracking workflows.
+The Agent must verify that target members have valid token rows before running tracking workflows.
 
 ## AGENT_ACTION: write_runtime_config
 
@@ -145,6 +164,10 @@ test ! -d /home/gem/workspace/agent/skills/feishu-user-token-registry
 
 ## AGENT_ACTION: configure_task_cron
 
+Create a new cron job during v6 installation. Do not write a fixed job ID in this package.
+
+Default schedule:
+
 ```yaml
 schedule:
   cron: "0 21 * * *"
@@ -157,6 +180,24 @@ payload:
     judge progress/risk/overdue/completion status, update task tables, and generate inspection report.
 ```
 
+After creation, record the generated values in runtime notes/config:
+
+```text
+TASK_TRACKING_CRON_JOB_ID={generated_job_id}
+TASK_TRACKING_CRON="0 21 * * *"
+TASK_TRACKING_CRON_TZ=Asia/Shanghai
+```
+
+## AGENT_ACTION: conversation_tests
+
+Run:
+
+```text
+executive-tracking test: track one authorized executive and write the report table.
+task-tracking test: create one small task by conversation and write task/follow-up tables.
+task-tracking cron test: dry-run or manually trigger the daily inspection flow.
+```
+
 ## AGENT_ACTION: final_verify
 
 Final verification must confirm:
@@ -167,4 +208,5 @@ Final verification must confirm:
 - Shared collectors exist.
 - Executive tracking can write `高管追踪报告`.
 - Task tracking can write `任务信息表`, `任务跟进记录表`, and `任务巡检报告`.
+- Task-tracking cron was created and the generated job ID was recorded.
 - Removed business skills are not installed.
