@@ -1,9 +1,15 @@
 #!/usr/bin/env python3
-"""
-飞书单聊（P2P）数据采集器（Python版）
-直接从多维表获取token，避免shell变量截断问题
-"""
-import sys, os, json, argparse, requests
+"""Collect Feishu P2P message search results for an authorized user."""
+import argparse
+import json
+import os
+import time
+
+import requests
+
+
+FEISHU_API = "https://open.feishu.cn"
+
 
 def required_env(*names):
     for name in names:
@@ -12,117 +18,104 @@ def required_env(*names):
             return value
     raise RuntimeError(f"missing required env: {'/'.join(names)}")
 
+
 APP_ID = required_env("LARK_APP_ID", "FEISHU_APP_ID")
 APP_SECRET = required_env("LARK_APP_SECRET", "FEISHU_APP_SECRET")
 BASE_TOKEN = required_env("FEISHU_TOKEN_BASE_TOKEN", "FEISHU_BASE_TOKEN", "AGENT_BASE_TOKEN")
 TABLE_ID = required_env("FEISHU_TOKEN_TABLE_ID", "FEISHU_TABLE_ID")
 
+
 def get_tenant_token():
-    r = requests.post("https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal",
-        json={"app_id": APP_ID, "app_secret": APP_SECRET})
-    return r.json().get("tenant_access_token")
+    return requests.post(
+        f"{FEISHU_API}/open-apis/auth/v3/tenant_access_token/internal",
+        json={"app_id": APP_ID, "app_secret": APP_SECRET},
+        timeout=30,
+    ).json().get("tenant_access_token")
+
+
+def extract_text_field(value):
+    if isinstance(value, str):
+        return value
+    if isinstance(value, list) and value:
+        first = value[0]
+        if isinstance(first, dict):
+            return first.get("text", "")
+        return str(first)
+    return str(value) if value else ""
+
 
 def get_user_token(open_id):
-    """从多维表获取用户token（安全方式，避免shell截断）"""
-    tenant_token = get_tenant_token()
-    url = f"https://open.feishu.cn/open-apis/bitable/v1/apps/{BASE_TOKEN}/tables/{TABLE_ID}/records/search"
-    headers = {"Authorization": f"Bearer {tenant_token}", "Content-Type": "application/json"}
+    url = f"{FEISHU_API}/open-apis/bitable/v1/apps/{BASE_TOKEN}/tables/{TABLE_ID}/records/search"
+    headers = {"Authorization": f"Bearer {get_tenant_token()}", "Content-Type": "application/json"}
     payload = {
-        "filter": {"conjunction": "and", "conditions": [
-            {"field_name": "成员", "operator": "is", "value": [open_id]}
-        ]},
-        "page_size": 10
+        "filter": {"conjunction": "and", "conditions": [{"field_name": "成员", "operator": "is", "value": [open_id]}]},
+        "page_size": 10,
     }
-    r = requests.post(url, headers=headers, json=payload)
-    data = r.json()
-    if data.get("code") == 0:
-        items = data.get("data", {}).get("items", [])
-        if items:
-            fields = items[0].get("fields", {})
-            token_field = fields.get("user_access_token", "")
-            token = ""
-            if isinstance(token_field, list) and len(token_field) > 0:
-                if isinstance(token_field[0], dict):
-                    token = token_field[0].get("text", "")
-            elif isinstance(token_field, str):
-                token = token_field
-            if len(token) > 100:
-                return token
-    return None
+    data = requests.post(url, headers=headers, json=payload, timeout=30).json()
+    items = data.get("data", {}).get("items", []) if data.get("code") == 0 else []
+    if not items:
+        return None
+    token = extract_text_field(items[0].get("fields", {}).get("user_access_token", ""))
+    return token if len(token) > 100 else None
+
 
 def collect_p2p(user_open_id, partners, start_time, end_time):
-    """采集单聊消息"""
     token = get_user_token(user_open_id)
     if not token:
-        return {"ok": False, "error": "无法获取用户token", "source": "p2p", "user": user_open_id, "count": 0, "items": []}
+        return {"ok": False, "error": "cannot load user_access_token", "source": "p2p", "user": user_open_id, "count": 0, "items": []}
 
     headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
-    
-    all_messages = []
-    page_token = ""
-    
+    params = {"page_size": 30, "user_id_type": "open_id"}
+    payload = {"query": "", "filter": {"time_range": {"start_time": start_time, "end_time": end_time}, "chat_type": "p2p"}}
+    partner_set = set(partners)
+    all_items = []
+    page_token = None
+
     for _ in range(10):
-        payload = {
-            "start_time": start_time,
-            "end_time": end_time,
-            "page_size": 50
-        }
         if page_token:
-            payload["page_token"] = page_token
-        
-        r = requests.post("https://open.feishu.cn/open-apis/im/v1/messages/search",
-            headers=headers, json=payload)
-        result = r.json()
-        
-        if result.get("code") == 0:
-            messages = result.get("data", {}).get("messages", [])
-            for msg in messages:
-                if msg.get("chat_type") == "p2p":
-                    sender_id = msg.get("sender", {}).get("id", "")
-                    if sender_id in partners or msg.get("chat_id") in partners:
-                        all_messages.append(msg)
-            
-            page_token = result.get("data", {}).get("page_token", "")
-            if not page_token:
-                break
-        else:
+            params["page_token"] = page_token
+        result = requests.post(f"{FEISHU_API}/open-apis/im/v1/messages/search", headers=headers, params=params, json=payload, timeout=60).json()
+        if result.get("code") != 0:
+            return {"ok": False, "source": "p2p", "user": user_open_id, "count": len(all_items), "items": all_items, "raw": result}
+        data = result.get("data", {})
+        for item in data.get("items", []):
+            meta = item.get("meta_data", {})
+            if not partner_set or meta.get("from_id") in partner_set or meta.get("chat_id") in partner_set:
+                all_items.append(item)
+        page_token = data.get("page_token")
+        if not data.get("has_more") or not page_token:
             break
-    
-    # 去重
+        time.sleep(0.5)
+
     seen = set()
     unique = []
-    for m in all_messages:
-        mid = m.get("message_id")
-        if mid and mid not in seen:
-            seen.add(mid)
-            unique.append(m)
-    
-    return {
-        "ok": True,
-        "source": "p2p",
-        "user": user_open_id,
-        "count": len(unique),
-        "items": unique
-    }
+    for item in all_items:
+        message_id = item.get("id") or item.get("meta_data", {}).get("message_id")
+        if message_id and message_id not in seen:
+            seen.add(message_id)
+            unique.append(item)
+
+    return {"ok": True, "source": "p2p", "user": user_open_id, "count": len(unique), "items": unique}
+
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--user", required=True)
-    parser.add_argument("--partners", required=True, help="逗号分隔的联系人open_id")
+    parser.add_argument("--partners", required=True, help="comma-separated open_id or chat_id values")
     parser.add_argument("--start", required=True)
     parser.add_argument("--end", required=True)
     parser.add_argument("--output")
     args = parser.parse_args()
 
-    partners = [p.strip() for p in args.partners.split(",")]
+    partners = [part.strip() for part in args.partners.split(",") if part.strip()]
     result = collect_p2p(args.user, partners, args.start, args.end)
     output = json.dumps(result, ensure_ascii=False)
-    
     if args.output:
-        with open(args.output, "w") as f:
-            f.write(output)
+        with open(args.output, "w", encoding="utf-8") as handle:
+            handle.write(output)
     else:
         print(output)
+
 
 if __name__ == "__main__":
     main()

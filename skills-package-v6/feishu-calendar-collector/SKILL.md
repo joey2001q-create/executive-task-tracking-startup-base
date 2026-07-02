@@ -1,21 +1,34 @@
 ---
 name: feishu-calendar-collector
-description: 飞书日程数据采集 Skill。采集指定用户在指定时间范围内的日程事件，返回标准化 JSON。
+description: Collect Feishu calendar events for an authorized user.
+alwaysActive: false
 ---
 
-# 日程数据采集器
+# Feishu Calendar Collector
 
-## 用法
+## Usage
 
 ```bash
-feishu-calendar-collector collect \
+feishu-calendar-collector \
   --user <open_id> \
   --start "2026-06-09T00:00:00+08:00" \
   --end "2026-06-17T23:59:59+08:00" \
   [--output file.json]
 ```
 
-## 返回格式
+## Official API
+
+- Method: `GET`
+- Endpoint: `/open-apis/calendar/v4/calendars/primary/events`
+- Token: `user_access_token`
+- Scopes: `calendar:calendar` or `calendar:calendar.event:read`
+- Query params: `start_time`, `end_time`, `page_size`
+
+`start_time` and `end_time` are Unix timestamps in seconds. Do not use `time_min` / `time_max`.
+
+Official response items are in `data.items`.
+
+## Output Shape
 
 ```json
 {
@@ -23,40 +36,13 @@ feishu-calendar-collector collect \
   "source": "calendar",
   "user": "ou_xxx",
   "count": 11,
-  "items": [
-    {
-      "event_id": "...",
-      "summary": "会议标题",
-      "start_time": "2026-06-09T15:00:00+08:00",
-      "end_time": "...",
-      "organizer": {"name": "...", "user_id": "ou_xxx"},
-      "attendees": [...],
-      "location": {"name": "..."},
-      "description": "..."
-    }
-  ]
+  "items": []
 }
 ```
 
-## 依赖
+## Notes
 
-- 外部用户 Token 表配置（`FEISHU_TOKEN_BASE_TOKEN` / `FEISHU_TOKEN_TABLE_ID`）
-- `lark-cli`
-
-## Token 安全传递（铁律）
-
-**严禁直接用 shell 变量传递长 token！**
-
-本脚本已改为 Python 实现，内部直接从多维表读取 token，避免了 shell 传递截断问题。
-
-如需在外部调用，正确做法：
-```bash
-# ✅ 用Python直接读取多维表并调用API
-python3 feishu-calendar-collector --user ou_xxx --start "..." --end "..."
-```
-
-## 注意事项
-
-- 必须带 `--start` 和 `--end` 参数
-- 内部自动将 ISO 时间转换为 Unix 时间戳（秒）
-- 返回嵌套 JSON：`{"data":[...]}`，items 在 `data` 数组中
+- `--start` and `--end` are required.
+- The script converts ISO timestamps to Unix seconds internally.
+- The script reads `user_access_token` from the external member token table.
+- The token table field used to match the member is `成员`.

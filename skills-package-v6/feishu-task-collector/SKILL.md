@@ -1,19 +1,46 @@
 ---
 name: feishu-task-collector
-description: 飞书任务数据采集 Skill。采集指定用户的任务列表，返回标准化 JSON。
+description: Internal/shared Feishu task data collector. Reads user_access_token from the member token Bitable and returns normalized task JSON for task-tracking.
 ---
 
-# 任务数据采集器
+# Feishu Task Collector
 
-## 用法
+This is an internal/shared dependency for `task-tracking`; do not expose it as a user-selectable business skill.
+
+## Usage
 
 ```bash
-feishu-task-collector collect \
-  --user <open_id> \
-  [--output file.json]
+feishu-task-collector --user <open_id> [--output file.json]
 ```
 
-## 返回格式
+## Required Runtime Configuration
+
+The token table is not hardcoded. The agent must fill these values from the configured member token Bitable after the administrator completes the prerequisite setup:
+
+- `LARK_APP_ID` or `FEISHU_APP_ID`
+- `LARK_APP_SECRET` or `FEISHU_APP_SECRET`
+- `FEISHU_TOKEN_BASE_TOKEN` or `FEISHU_BASE_TOKEN` or `AGENT_BASE_TOKEN`
+- `FEISHU_TOKEN_TABLE_ID` or `FEISHU_TABLE_ID`
+
+The member token table must include:
+
+- `成员`
+- `user_access_token`
+
+## Official API Contract
+
+- Tenant token: `POST /open-apis/auth/v3/tenant_access_token/internal`
+- Token table lookup: `POST /open-apis/bitable/v1/apps/:app_token/tables/:table_id/records/search`
+- Task list: `GET /open-apis/task/v2/tasks`
+
+Task list parameters:
+
+- `type=my_tasks`
+- `page_size=100`
+- `user_id_type=open_id`
+- `page_token` when paginating
+
+## Output
 
 ```json
 {
@@ -21,25 +48,6 @@ feishu-task-collector collect \
   "source": "task",
   "user": "ou_xxx",
   "count": 2,
-  "items": [
-    {
-      "guid": "...",
-      "summary": "任务标题",
-      "due_at": "2026-05-28T08:00:00+08:00",
-      "completed_at": null,
-      "url": "https://..."
-    }
-  ]
+  "items": []
 }
 ```
-
-## Token 安全传递（铁律）
-
-**严禁直接用 shell 变量传递长 token！**
-
-本脚本已改为 Python 实现，内部直接从多维表读取 token，避免了 shell 传递截断问题。
-
-## 注意事项
-
-- 返回全部任务，不支持时间过滤
-- 如需按时间过滤，由调用方在拿到数据后自行过滤

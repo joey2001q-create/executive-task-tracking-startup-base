@@ -1,9 +1,19 @@
 #!/usr/bin/env python3
 """
-飞书任务数据采集器（Python版）
-直接从多维表获取token，避免shell变量截断问题
+Feishu task collector.
+
+Reads user_access_token from the external member token Bitable, then calls
+the official task list API as the authorized user.
 """
-import sys, os, json, argparse, requests
+import argparse
+import json
+import os
+
+import requests
+
+
+FEISHU_API = "https://open.feishu.cn"
+
 
 def required_env(*names):
     for name in names:
@@ -12,80 +22,111 @@ def required_env(*names):
             return value
     raise RuntimeError(f"missing required env: {'/'.join(names)}")
 
+
 APP_ID = required_env("LARK_APP_ID", "FEISHU_APP_ID")
 APP_SECRET = required_env("LARK_APP_SECRET", "FEISHU_APP_SECRET")
 BASE_TOKEN = required_env("FEISHU_TOKEN_BASE_TOKEN", "FEISHU_BASE_TOKEN", "AGENT_BASE_TOKEN")
 TABLE_ID = required_env("FEISHU_TOKEN_TABLE_ID", "FEISHU_TABLE_ID")
 
+
 def get_tenant_token():
-    r = requests.post("https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal",
-        json={"app_id": APP_ID, "app_secret": APP_SECRET})
-    return r.json().get("tenant_access_token")
+    resp = requests.post(
+        f"{FEISHU_API}/open-apis/auth/v3/tenant_access_token/internal",
+        json={"app_id": APP_ID, "app_secret": APP_SECRET},
+        timeout=30,
+    )
+    data = resp.json()
+    if data.get("code") not in (0, None):
+        raise RuntimeError(f"tenant token failed: {data.get('msg')}")
+    token = data.get("tenant_access_token")
+    if not token:
+        raise RuntimeError("tenant token response did not include tenant_access_token")
+    return token
+
+
+def extract_text_field(value):
+    if isinstance(value, str):
+        return value
+    if isinstance(value, list) and value:
+        first = value[0]
+        if isinstance(first, dict):
+            return first.get("text", "")
+        return str(first)
+    return str(value) if value else ""
+
 
 def get_user_token(open_id):
-    """从多维表获取用户token（安全方式，避免shell截断）"""
     tenant_token = get_tenant_token()
-    url = f"https://open.feishu.cn/open-apis/bitable/v1/apps/{BASE_TOKEN}/tables/{TABLE_ID}/records/search"
+    url = f"{FEISHU_API}/open-apis/bitable/v1/apps/{BASE_TOKEN}/tables/{TABLE_ID}/records/search"
     headers = {"Authorization": f"Bearer {tenant_token}", "Content-Type": "application/json"}
     payload = {
-        "filter": {"conjunction": "and", "conditions": [
-            {"field_name": "成员", "operator": "is", "value": [open_id]}
-        ]},
-        "page_size": 10
+        "filter": {
+            "conjunction": "and",
+            "conditions": [
+                {"field_name": "成员", "operator": "is", "value": [open_id]}
+            ],
+        },
+        "page_size": 10,
     }
-    r = requests.post(url, headers=headers, json=payload)
-    data = r.json()
-    if data.get("code") == 0:
-        items = data.get("data", {}).get("items", [])
-        if items:
-            fields = items[0].get("fields", {})
-            token_field = fields.get("user_access_token", "")
-            token = ""
-            if isinstance(token_field, list) and len(token_field) > 0:
-                if isinstance(token_field[0], dict):
-                    token = token_field[0].get("text", "")
-            elif isinstance(token_field, str):
-                token = token_field
-            if len(token) > 100:
-                return token
+    data = requests.post(url, headers=headers, json=payload, timeout=30).json()
+    if data.get("code") != 0:
+        return None
+
+    items = data.get("data", {}).get("items", [])
+    if not items:
+        return None
+
+    token = extract_text_field(items[0].get("fields", {}).get("user_access_token", ""))
+    if len(token) > 100:
+        return token
     return None
 
+
 def collect_tasks(user_open_id):
-    """采集任务"""
     token = get_user_token(user_open_id)
     if not token:
-        return {"ok": False, "error": "无法获取用户token", "source": "task", "user": user_open_id, "count": 0, "items": []}
+        return {
+            "ok": False,
+            "error": "cannot load user_access_token from token table",
+            "source": "task",
+            "user": user_open_id,
+            "count": 0,
+            "items": [],
+        }
 
     headers = {"Authorization": f"Bearer {token}"}
-    
     all_tasks = []
     page_token = ""
-    
+
     for _ in range(10):
-        url = "https://open.feishu.cn/open-apis/task/v2/tasks?page_size=100"
+        params = {"page_size": 100, "type": "my_tasks", "user_id_type": "open_id"}
         if page_token:
-            url += f"&page_token={page_token}"
-        
-        r = requests.get(url, headers=headers)
-        result = r.json()
-        
-        if result.get("code") == 0:
-            items = result.get("data", {}).get("items", [])
-            all_tasks.extend(items)
-            
-            page_token = result.get("data", {}).get("page_token", "")
-            if not page_token:
-                break
-        else:
+            params["page_token"] = page_token
+
+        result = requests.get(
+            f"{FEISHU_API}/open-apis/task/v2/tasks",
+            headers=headers,
+            params=params,
+            timeout=60,
+        ).json()
+
+        if result.get("code") != 0:
             break
-    
+
+        items = result.get("data", {}).get("items", [])
+        all_tasks.extend(items)
+        page_token = result.get("data", {}).get("page_token", "")
+        if not page_token:
+            break
+
     return {
         "ok": True,
         "source": "task",
         "user": user_open_id,
         "count": len(all_tasks),
-        "items": all_tasks
+        "items": all_tasks,
     }
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -95,12 +136,13 @@ def main():
 
     result = collect_tasks(args.user)
     output = json.dumps(result, ensure_ascii=False)
-    
+
     if args.output:
-        with open(args.output, "w") as f:
+        with open(args.output, "w", encoding="utf-8") as f:
             f.write(output)
     else:
         print(output)
+
 
 if __name__ == "__main__":
     main()

@@ -1,10 +1,19 @@
 #!/usr/bin/env python3
 """
-feishu-data-collector v3.1 — 基于多维表 token 直接调用飞书 API
-串行采集多高管数据，输出统一 JSON
-支持6类数据：日程、任务、妙记、群聊、单聊、邮箱
+feishu-data-collector-v3 - collect Feishu data with user_access_token
+stored in the external member token Bitable.
 """
-import sys, os, json, subprocess, time, requests
+import datetime
+import json
+import os
+import sys
+import time
+
+import requests
+
+
+FEISHU_API = "https://open.feishu.cn"
+
 
 def required_env(*names):
     for name in names:
@@ -13,6 +22,7 @@ def required_env(*names):
             return value
     raise RuntimeError(f"missing required env: {'/'.join(names)}")
 
+
 BASE_TOKEN = required_env("FEISHU_TOKEN_BASE_TOKEN", "FEISHU_BASE_TOKEN", "AGENT_BASE_TOKEN")
 TABLE_ID = required_env("FEISHU_TOKEN_TABLE_ID", "FEISHU_TABLE_ID")
 APP_ID = required_env("LARK_APP_ID", "FEISHU_APP_ID")
@@ -20,172 +30,108 @@ APP_SECRET = required_env("LARK_APP_SECRET", "FEISHU_APP_SECRET")
 
 
 def get_bot_token():
-    """获取 bot tenant_access_token"""
-    r = requests.post("https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal",
-                      json={"app_id": APP_ID, "app_secret": APP_SECRET})
-    return r.json().get("tenant_access_token", "")
+    resp = requests.post(
+        f"{FEISHU_API}/open-apis/auth/v3/tenant_access_token/internal",
+        json={"app_id": APP_ID, "app_secret": APP_SECRET},
+        timeout=30,
+    )
+    data = resp.json()
+    if data.get("code") not in (0, None):
+        raise RuntimeError(f"tenant token failed: {data.get('msg')}")
+    token = data.get("tenant_access_token")
+    if not token:
+        raise RuntimeError("tenant token response did not include tenant_access_token")
+    return token
 
 
-def get_token_from_base(oid):
-    """从多维表读取某用户的 user_access_token
-    多维表中的 token 已处理完毕，直接读取使用，无需二次处理
-    """
-    # 先获取 bot token
+def extract_text_field(value):
+    if isinstance(value, str):
+        return value
+    if isinstance(value, list) and value:
+        first = value[0]
+        if isinstance(first, dict):
+            return first.get("text", "")
+        return str(first)
+    return str(value) if value else ""
+
+
+def get_token_from_base(open_id):
     bot_token = get_bot_token()
-    if not bot_token:
-        return None
-    
-    # 查询多维表
-    url = f"https://open.feishu.cn/open-apis/bitable/v1/apps/{BASE_TOKEN}/tables/{TABLE_ID}/records/search"
+    url = f"{FEISHU_API}/open-apis/bitable/v1/apps/{BASE_TOKEN}/tables/{TABLE_ID}/records/search"
     headers = {"Authorization": f"Bearer {bot_token}", "Content-Type": "application/json"}
     payload = {
         "filter": {
             "conjunction": "and",
             "conditions": [
-                {
-                    "field_name": "成员",
-                    "operator": "is",
-                    "value": [oid]
-                }
-            ]
+                {"field_name": "成员", "operator": "is", "value": [open_id]}
+            ],
         },
-        "page_size": 10
+        "page_size": 10,
     }
-    
-    r = requests.post(url, headers=headers, json=payload)
-    data = r.json()
-    
+    resp = requests.post(url, headers=headers, json=payload, timeout=30)
+    data = resp.json()
     if data.get("code") != 0:
-        print(f"  ⚠️ 查询多维表失败: {data.get('msg')}", file=sys.stderr)
+        print(f"token table query failed: {data.get('msg')}", file=sys.stderr)
         return None
-    
+
     items = data.get("data", {}).get("items", [])
     if not items:
-        print(f"  ⚠️ 多维表中无 {oid} 的记录", file=sys.stderr)
+        print(f"token table has no row for {open_id}", file=sys.stderr)
         return None
-    
-    record = items[0]
-    token_field = record.get("fields", {}).get("user_access_token", "")
-    
-    # 兼容两种格式：纯文本字符串 或 [{"text": "...", "type": "text"}]
-    if isinstance(token_field, list) and len(token_field) > 0:
-        token = token_field[0].get("text", "") if isinstance(token_field[0], dict) else str(token_field[0])
-    elif isinstance(token_field, str):
-        token = token_field
-    else:
-        token = str(token_field) if token_field else ""
-    
+
+    token = extract_text_field(items[0].get("fields", {}).get("user_access_token", ""))
     if not token or token == "None":
-        print(f"  ⚠️ {oid} 的 user_access_token 为空", file=sys.stderr)
+        print(f"user_access_token is empty for {open_id}", file=sys.stderr)
         return None
-    
     return token
 
 
 def api_call(token, method, endpoint, params=None, json_data=None):
-    """通用飞书 API 调用"""
-    url = f"https://open.feishu.cn{endpoint}"
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "Content-Type": "application/json"
-    }
-    
+    url = f"{FEISHU_API}{endpoint}"
+    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
     try:
         if method.upper() == "GET":
-            r = requests.get(url, headers=headers, params=params, timeout=60)
+            resp = requests.get(url, headers=headers, params=params, timeout=60)
         elif method.upper() == "POST":
-            r = requests.post(url, headers=headers, json=json_data, timeout=60)
+            resp = requests.post(url, headers=headers, json=json_data, params=params, timeout=60)
         else:
-            return {"ok": False, "error": f"不支持的 method: {method}"}
-        
-        data = r.json()
-        if data.get("code") == 0:
-            data["ok"] = True
-        else:
-            data["ok"] = False
+            return {"ok": False, "error": f"unsupported method: {method}"}
+        data = resp.json()
+        data["ok"] = data.get("code") == 0
         return data
-    except Exception as e:
-        return {"ok": False, "error": str(e)}
+    except Exception as exc:
+        return {"ok": False, "error": str(exc)}
 
 
 def iso_to_timestamp(iso_str):
-    """将 ISO 时间字符串转为 Unix 时间戳（秒）"""
-    import datetime
-    dt = datetime.datetime.fromisoformat(iso_str.replace('Z', '+00:00'))
+    dt = datetime.datetime.fromisoformat(iso_str.replace("Z", "+00:00"))
     return int(dt.timestamp())
 
 
-def collect_calendar(token, start_iso, end_iso):
-    """采集日程"""
-    params = {
-        "start_time": iso_to_timestamp(start_iso),
-        "end_time": iso_to_timestamp(end_iso),
-        "page_size": 100
-    }
-    return api_call(token, "GET", "/open-apis/calendar/v4/calendars/primary/events/instance_view", params=params)
-
-
-def collect_task(token):
-    """采集任务"""
-    params = {"user_id_type": "open_id", "page_size": 100}
-    return api_call(token, "GET", "/open-apis/task/v2/task_v2/list_related_task", params=params)
-
-
-def collect_minutes(token, start_iso, end_iso):
-    """采集妙记"""
-    payload = {
-        "filter": {
-            "create_time": {
-                "start_time": start_iso,
-                "end_time": end_iso
-            }
-        },
-        "page_size": 100
-    }
-    return api_call(token, "POST", "/open-apis/minutes/v1/minutes/search", json_data=payload)
-
-
-def collect_all_pages(token, method, endpoint, initial_params=None, initial_json=None, items_key="items"):
-    """通用分页采集，自动翻页获取全部数据
-    items_key: 响应中数据数组的键名
-    """
+def collect_all_pages(token, method, endpoint, initial_params=None, initial_json=None, items_key="items", max_pages=20):
     all_items = []
     page_token = None
     page_count = 0
-    max_pages = 20  # 安全上限，避免无限循环
-
     while page_count < max_pages:
         params = dict(initial_params) if initial_params else {}
         json_data = dict(initial_json) if initial_json else None
-
         if page_token:
-            if method.upper() == "GET":
-                params["page_token"] = page_token
-            else:
-                json_data["page_token"] = page_token
+            params["page_token"] = page_token
 
         result = api_call(token, method, endpoint, params=params, json_data=json_data)
-
         if not result.get("ok"):
-            # 返回错误时，带上已收集的数据
             result["_collected_items"] = all_items
             result["_pages"] = page_count
             return result
 
-        items = result.get("data", {}).get(items_key, [])
-        if items:
-            all_items.extend(items)
-
+        data = result.get("data", {})
+        all_items.extend(data.get(items_key, []))
         page_count += 1
-        has_more = result.get("data", {}).get("has_more", False)
-        page_token = result.get("data", {}).get("page_token")
-
-        if not has_more or not page_token:
+        page_token = data.get("page_token")
+        if not data.get("has_more") or not page_token:
             break
+        time.sleep(0.5)
 
-        time.sleep(0.5)  # 翻页间隔，避免 rate limit
-
-    # 构造统一返回格式
     return {
         "ok": True,
         "code": 0,
@@ -194,126 +140,109 @@ def collect_all_pages(token, method, endpoint, initial_params=None, initial_json
             "has_more": False,
             "page_token": None,
             "_total_pages": page_count,
-            "_total_items": len(all_items)
-        }
+            "_total_items": len(all_items),
+        },
     }
 
 
-def collect_group_messages(token, start_iso, end_iso):
-    """采集群聊消息（分页）"""
+def collect_calendar(token, start_iso, end_iso):
+    params = {
+        "start_time": iso_to_timestamp(start_iso),
+        "end_time": iso_to_timestamp(end_iso),
+        "page_size": 100,
+    }
+    return api_call(token, "GET", "/open-apis/calendar/v4/calendars/primary/events/instance_view", params=params)
+
+
+def collect_task(token):
+    params = {"user_id_type": "open_id", "page_size": 100, "type": "my_tasks"}
+    return collect_all_pages(token, "GET", "/open-apis/task/v2/tasks", initial_params=params)
+
+
+def collect_minutes(token, start_iso, end_iso):
+    payload = {
+        "filter": {
+            "create_time": {"start_time": start_iso, "end_time": end_iso}
+        },
+        "page_size": 100,
+    }
+    return api_call(token, "POST", "/open-apis/minutes/v1/minutes/search", json_data=payload)
+
+
+def collect_messages(token, start_iso, end_iso, chat_type):
     payload = {
         "query": "",
-        "start_time": start_iso,
-        "end_time": end_iso,
-        "page_size": 50
+        "filter": {
+            "time_range": {"start_time": start_iso, "end_time": end_iso},
+            "chat_type": chat_type,
+        },
     }
-    return collect_all_pages(token, "POST", "/open-apis/im/v1/messages/search",
-                             initial_json=payload, items_key="items")
-
-
-def collect_p2p_messages(token, start_iso, end_iso):
-    """采集单聊消息（分页）"""
-    payload = {
-        "query": "",
-        "start_time": start_iso,
-        "end_time": end_iso,
-        "chat_type": "p2p",
-        "page_size": 50
-    }
-    return collect_all_pages(token, "POST", "/open-apis/im/v1/messages/search",
-                             initial_json=payload, items_key="items")
+    params = {"page_size": 30, "user_id_type": "open_id"}
+    return collect_all_pages(
+        token,
+        "POST",
+        "/open-apis/im/v1/messages/search",
+        initial_params=params,
+        initial_json=payload,
+        items_key="items",
+    )
 
 
 def collect_mail(token):
-    """采集邮箱"""
-    # 飞书邮件 API 必须使用 label_id 或 folder_id 参数
-    # 先尝试 label_id=INBOX（收件箱标签）
     params = {"label_id": "INBOX", "page_size": 20}
-    return api_call(token, "GET", "/open-apis/mail/v1/user_mailboxes/me/messages", params=params)
+    return collect_all_pages(
+        token,
+        "GET",
+        "/open-apis/mail/v1/user_mailboxes/me/messages",
+        initial_params=params,
+        items_key="items",
+        max_pages=10,
+    )
 
 
-def collect_user(oid, name, start_iso, end_iso):
-    """采集单个用户的6类数据"""
-    result = {"user": name, "open_id": oid, "period": f"{start_iso} ~ {end_iso}", "sources": {}}
-    
-    # 从多维表获取 token
-    print(f"  🔑 从多维表获取 {name} 的 token...", file=sys.stderr)
-    token = get_token_from_base(oid)
+def collect_user(open_id, name, start_iso, end_iso):
+    result = {"user": name, "open_id": open_id, "period": f"{start_iso} ~ {end_iso}", "sources": {}}
+    print(f"loading user token for {name}...", file=sys.stderr)
+    token = get_token_from_base(open_id)
     if not token:
-        result["sources"]["_error"] = "无法从多维表获取 token"
+        result["sources"]["_error"] = "cannot load user_access_token from token table"
         return result
-    
-    # 1. 日程
-    print(f"  📅 采集 {name} 日程...", file=sys.stderr)
-    r = collect_calendar(token, start_iso, end_iso)
-    result["sources"]["calendar"] = r
+
+    result["sources"]["calendar"] = collect_calendar(token, start_iso, end_iso)
     time.sleep(1)
-    
-    # 2. 任务
-    print(f"  ✅ 采集 {name} 任务...", file=sys.stderr)
-    r = collect_task(token)
-    result["sources"]["task"] = r
+    result["sources"]["task"] = collect_task(token)
     time.sleep(1)
-    
-    # 3. 妙记
-    print(f"  🎙️ 采集 {name} 妙记...", file=sys.stderr)
-    r = collect_minutes(token, start_iso, end_iso)
-    result["sources"]["minutes"] = r
+    result["sources"]["minutes"] = collect_minutes(token, start_iso, end_iso)
     time.sleep(1)
-    
-    # 4. 群聊搜索
-    print(f"  💬 采集 {name} 群聊...", file=sys.stderr)
-    r = collect_group_messages(token, start_iso, end_iso)
-    result["sources"]["group"] = r
+    result["sources"]["group"] = collect_messages(token, start_iso, end_iso, "group")
     time.sleep(1)
-    
-    # 5. 单聊
-    print(f"  👤 采集 {name} 单聊...", file=sys.stderr)
-    r = collect_p2p_messages(token, start_iso, end_iso)
-    result["sources"]["p2p"] = r
+    result["sources"]["p2p"] = collect_messages(token, start_iso, end_iso, "p2p")
     time.sleep(1)
-    
-    # 6. 邮箱
-    print(f"  📧 采集 {name} 邮箱...", file=sys.stderr)
-    r = collect_mail(token)
-    result["sources"]["mail"] = r
-    
+    result["sources"]["mail"] = collect_mail(token)
     return result
 
 
 def main():
     if len(sys.argv) < 3:
-        print("Usage: feishu-data-collector-v3 <output.json> <oid:name> [<oid:name> ...]", file=sys.stderr)
-        print("  Example: feishu-data-collector-v3 /tmp/data.json 'ou_xxx:韩嘉辉' 'ou_yyy:李珮姗'", file=sys.stderr)
+        print("Usage: feishu-data-collector-v3 <output.json> <open_id:name> [<open_id:name> ...]", file=sys.stderr)
         sys.exit(1)
-    
+
     output = sys.argv[1]
     users = []
-    for u in sys.argv[2:]:
-        oid, name = u.split(":", 1)
-        users.append((oid, name))
-    
-    # 时间范围：过去7天
+    for raw_user in sys.argv[2:]:
+        open_id, name = raw_user.split(":", 1)
+        users.append((open_id, name))
+
     end = time.strftime("%Y-%m-%dT23:59:59+08:00", time.localtime())
-    start = time.strftime("%Y-%m-%dT00:00:00+08:00", time.localtime(time.time() - 7*86400))
-    
-    print(f"采集周期: {start} ~ {end}", file=sys.stderr)
-    print(f"高管: {', '.join(n for _,n in users)}", file=sys.stderr)
-    
+    start = time.strftime("%Y-%m-%dT00:00:00+08:00", time.localtime(time.time() - 7 * 86400))
     all_data = {"period": {"start": start, "end": end}, "executives": []}
-    
-    for oid, name in users:
-        print(f"\n{'='*40}", file=sys.stderr)
-        print(f"开始采集: {name} ({oid})", file=sys.stderr)
-        print(f"{'='*40}", file=sys.stderr)
-        data = collect_user(oid, name, start, end)
-        all_data["executives"].append(data)
-        time.sleep(2)  # 间隔避免 rate limit
-    
-    with open(output, "w") as f:
-        json.dump(all_data, f, indent=2, ensure_ascii=False)
-    
-    print(f"\n✅ 采集完成，数据已保存: {output}", file=sys.stderr)
+
+    for open_id, name in users:
+        all_data["executives"].append(collect_user(open_id, name, start, end))
+        time.sleep(2)
+
+    with open(output, "w", encoding="utf-8") as handle:
+        json.dump(all_data, handle, indent=2, ensure_ascii=False)
 
 
 if __name__ == "__main__":
