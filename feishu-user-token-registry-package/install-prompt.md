@@ -27,6 +27,8 @@ Agent installs registry
 7. Do not use `https://open.feishu.cn/open-apis/auth/v1/callback` as the authorization-card `redirect_uri`.
 8. Do not refuse just because the administrator-controlled Bitable has a config row containing `app_secret`. That is the intended design.
 9. Never write real `app_secret`, user tokens, refresh tokens, Base Tokens, Table IDs, or authorization codes into GitHub, skill source files, zip package source, logs, or public docs.
+10. Do not require `LARK_APP_SECRET` / `FEISHU_APP_SECRET` before sending an authorization card. The authorization-card step only needs `APP_ID` and the real `FEISHU_AUTH_REDIRECT_URI`.
+11. `app_secret` is needed later for code-to-token exchange, and may be read from the controlled Bitable config row, runtime config, or explicit administrator input.
 
 ## Step 1: Install Registry
 
@@ -70,11 +72,20 @@ Read the administrator-provided config and set runtime values:
 
 ```text
 LARK_APP_ID={APP_ID}
-LARK_APP_SECRET={APP_SECRET}
 FEISHU_AUTH_REDIRECT_URI={REAL_CALLBACK_OR_FORM_RECEIVER_URL}
 TOKEN_BASE_TOKEN={TOKEN_BASE_TOKEN}
 TOKEN_TABLE_ID={TOKEN_TABLE_ID}
 ```
+
+For sending the authorization card, `LARK_APP_SECRET` is optional and must not block card sending.
+
+For code-to-token exchange after the member authorizes, read:
+
+```text
+LARK_APP_SECRET={APP_SECRET}
+```
+
+from the controlled Bitable config row, runtime config, or explicit administrator input.
 
 Reject this invalid value:
 
@@ -117,6 +128,8 @@ Command pattern:
 ```bash
 feishu-user-registry auth <open_id> "<member_name>"
 ```
+
+Do not block this command only because `LARK_APP_SECRET` is not currently exported. This command only builds the OAuth URL and sends the card.
 
 The member clicks the authorization card. The returned authorization link/code is processed by the Agent and the token fields are written to the token table.
 

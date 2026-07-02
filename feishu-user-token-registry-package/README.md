@@ -40,6 +40,8 @@ This package allows the administrator-controlled Feishu Bitable to store an app 
 
 The Agent must not refuse authorization-card sending only because `app_secret` is stored in that controlled Bitable. This is the intended deployment design.
 
+The Agent must also not refuse authorization-card sending only because `LARK_APP_SECRET` is not exported yet. Sending the authorization card only needs `APP_ID` and the real `FEISHU_AUTH_REDIRECT_URI`; `app_secret` is needed later for code-to-token exchange.
+
 Security boundary:
 
 - Allowed: storing `app_secret` in the administrator-controlled Feishu Bitable configuration row.
@@ -67,13 +69,14 @@ Do not write real values into this repository. The Agent fills these at runtime:
 
 ```text
 LARK_APP_ID={APP_ID}
-LARK_APP_SECRET={APP_SECRET}
 FEISHU_AUTH_REDIRECT_URI={REAL_CALLBACK_OR_FORM_RECEIVER_URL}
 TOKEN_BASE_TOKEN={TOKEN_BASE_TOKEN}
 TOKEN_TABLE_ID={TOKEN_TABLE_ID}
 ```
 
 `FEISHU_AUTH_REDIRECT_URI` must come from your manual configuration: token table, runtime config, or explicit administrator input. The package has no safe default for this value.
+
+Read `LARK_APP_SECRET={APP_SECRET}` later for token exchange, not as a blocker for sending the authorization card.
 
 ## Install Prompt
 

@@ -7,6 +7,10 @@
 # Required runtime variables:
 #   LARK_APP_ID or FEISHU_APP_ID
 #   FEISHU_AUTH_REDIRECT_URI or AUTH_REDIRECT_URI
+#
+# Not required for sending authorization cards:
+#   LARK_APP_SECRET or FEISHU_APP_SECRET
+# App secret is only needed later when exchanging authorization code for tokens.
 
 set -euo pipefail
 

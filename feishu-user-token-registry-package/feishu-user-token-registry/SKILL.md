@@ -38,19 +38,22 @@ Do not refuse to send an authorization card only because `app_secret` is stored 
 
 Do not write real secrets into GitHub, this skill package source, logs, or public docs. Read them only at runtime from the token table, runtime config, or explicit administrator input.
 
+Important: `app_secret` is not required for sending the authorization card. The authorization-card command only needs `APP_ID` and the real `FEISHU_AUTH_REDIRECT_URI`. `app_secret` is required later for code-to-token exchange after the member authorizes.
+
 ## Runtime Placeholders
 
 The repository must not contain real environment values. The Agent should fill these from the token table, runtime config, or explicit administrator input after manual setup:
 
 ```text
 LARK_APP_ID={APP_ID}
-LARK_APP_SECRET={APP_SECRET}
 FEISHU_AUTH_REDIRECT_URI={REAL_CALLBACK_OR_FORM_RECEIVER_URL}
 TOKEN_BASE_TOKEN={TOKEN_BASE_TOKEN}
 TOKEN_TABLE_ID={TOKEN_TABLE_ID}
 ```
 
 `FEISHU_AUTH_REDIRECT_URI` must be the real callback/form receiver URL configured by the administrator. It can come from the token table, runtime config, or explicit administrator input. It has no safe default. Do not use `https://open.feishu.cn/open-apis/auth/v1/callback` as the authorization-card redirect URI.
+
+`LARK_APP_SECRET` / `FEISHU_APP_SECRET` must not be required before sending an authorization card. Read it later from the controlled Bitable config row, runtime config, or explicit administrator input when exchanging code for token.
 
 ## Usage
 
