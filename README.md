@@ -1,56 +1,120 @@
-# Executive Task Tracking Startup Base
+# 高管追踪与任务追踪启动底座
 
-This repository packages a two-stage startup base for Feishu executive tracking and task tracking.
+这个仓库是飞书高管追踪和任务追踪的两阶段安装底座，用来给 Agent 准备授权前置包和正式业务 skill 包。
 
-## Correct Test Flow
+它不是完整业务项目，也不是把所有旧 skill 都装进去的合集。当前目标是只保留两个业务入口：
+
+- 高管追踪
+- 任务追踪
+
+## 正确测试流程
 
 ```text
-Agent installs registry
--> Administrator manually configures Feishu app and Bitable
--> Administrator says "send an authorization card to XX"
--> Agent sends the authorization card
--> Member authorizes and token is written to Bitable
--> Agent verifies the token table
--> Agent installs skills-package-v6
--> Agent creates the task-tracking cron job
--> Administrator tests executive-tracking and task-tracking by conversation
+Agent 安装 registry
+-> 你手动配置飞书应用和多维表
+-> 你说“给 XX 发授权卡片”
+-> Agent 发授权卡片
+-> 成员授权，token 写入多维表
+-> Agent 验证 token 表
+-> Agent 安装 skills-package-v6
+-> Agent 配置任务追踪定时任务
+-> 通过对话测试高管追踪和任务追踪
 ```
 
-## Download These Two Packages
+## 下载这两个安装包
 
-Use these two zip packages for testing:
+开始测试时下载并按顺序安装：
 
 ```text
 feishu-user-token-registry-package.zip
 skills-package-v6.zip
 ```
 
-Install and verify them in that order.
+安装顺序不能反：
 
-## Package Roles
+1. 先安装 `feishu-user-token-registry-package.zip`
+2. 你完成飞书应用、多维表、机器人权限和应用发布等手动配置
+3. Agent 发授权卡片并验证 token 表
+4. 再安装 `skills-package-v6.zip`
 
-- `feishu-user-token-registry-package/`: prerequisite authorization package. It can be installed first, then waits for the administrator to manually configure Feishu app permissions, callback URL, token Bitable, bot permissions, and app publishing.
-- `skills-package-v6/`: official slim business package. It exposes only executive tracking and task tracking, reads the already verified token table, and creates the task-tracking daily cron during installation.
+## 两个包的职责
 
-## Business Scope
+`feishu-user-token-registry-package/`
 
-Only these two business entries are exposed:
+前置授权包。它可以先安装，但必须等你手动完成飞书配置后，Agent 才能发送授权卡片。它负责：
+
+- 生成飞书 OAuth 授权链接
+- 给指定成员发送授权卡片
+- 处理成员授权后的 code/token
+- 把 `user_access_token` 和 `refresh_token` 写入成员 Token 多维表
+- 验证目标成员 token 是否有效
+
+`skills-package-v6/`
+
+正式业务包。它只暴露两个业务 skill：
 
 - `executive-tracking`
 - `task-tracking`
 
-The following old business skills are intentionally excluded:
+它不负责发授权卡片，也不创建 token 表，只读取已经验证好的成员 Token 多维表。安装 v6 时，Agent 还要创建任务追踪每日 21:00 的定时巡检任务，并记录实际生成的 cron job id。
 
-- recruiting
-- team vibe
-- attendance
-- competitor intelligence
-- boss daily briefing
-- customer follow-up
-- finance/sales/market/product sub-skills
+## 手动配置与 Agent 配置
 
-## Safety Rules
+你手动配置：
 
-- Do not commit real App IDs, App Secrets, Base Tokens, Table IDs, authorization codes, user tokens, or refresh tokens.
-- Do not write fixed cron job IDs into the package. The Agent records the actual generated job ID during installation.
-- Do not commit macOS metadata or temporary extraction directories.
+- 飞书应用权限
+- OAuth 回调地址
+- 应用可用范围
+- 应用发布
+- 成员 Token 多维表
+- 业务多维表
+- 机器人多维表权限
+- App ID、App Secret、Base Token、Table ID 等真实环境配置
+
+Agent 配置：
+
+- 安装 registry
+- 根据你的配置发送授权卡片
+- 写入并验证成员 token
+- 安装 v6
+- 安装 shared/internal collectors
+- 写入运行时变量
+- 配置任务追踪定时任务
+- 通过对话测试高管追踪和任务追踪
+
+## 业务范围
+
+只保留：
+
+- 高管追踪
+- 任务追踪
+
+以下旧业务 skill 不再安装、不再暴露：
+
+- 招聘
+- 团队氛围
+- 考勤
+- 竞对分析
+- 老板每日简报
+- 客户跟进
+- 财务、销售、市场、产品子 skill
+
+## 安全规则
+
+- 不要把真实 App ID、App Secret、Base Token、Table ID、授权码、user token、refresh token 写进仓库。
+- 不要在包里写死 cron job id。定时任务由 Agent 安装 v6 时创建，并记录实际生成的 id。
+- 不要提交 macOS 元数据、临时解压目录、Python 缓存文件。
+
+## 测试入口
+
+把 `feishu-user-token-registry-package.zip` 发给 Agent 时，让它阅读：
+
+```text
+feishu-user-token-registry-package/install-prompt.md
+```
+
+把 `skills-package-v6.zip` 发给 Agent 时，让它阅读：
+
+```text
+skills-package-v6/full-install-prompt-v6.md
+```
