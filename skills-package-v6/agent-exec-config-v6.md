@@ -1,18 +1,20 @@
-# Executive + Task Tracking Agent Config
+# Executive + Task Tracking Agent Config v6
 
-> 本文档面向安装 Agent。当前包只保留两个业务入口：`executive-tracking`（高管追踪）和 `task-tracking`（任务追踪）。
-> 其他招聘、考勤、竞对、老板每日简报、客户跟进等 skill 已从本包移除。
+This document is for the installation Agent. This package keeps only two business entries:
 
-## 保留范围
+- `executive-tracking`: executive tracking
+- `task-tracking`: task tracking
 
-### 业务入口
+All other business skills, including recruiting, attendance, competitor intelligence, boss daily briefing, and customer follow-up, are removed.
+
+## Package Scope
+
+Business entries:
 
 - `executive-tracking` -> `feishu-boss-work/`
 - `task-tracking` -> `feishu-exec-task-extractor/`
 
-### 共享依赖
-
-两个业务入口都依赖统一数据采集层：
+Shared/internal dependencies:
 
 - `feishu-data-collector-v3/`
 - `feishu-calendar-collector/`
@@ -21,20 +23,17 @@
 - `feishu-group-collector/`
 - `feishu-p2p-collector/`
 - `feishu-mail-collector/`
-
-高管横向对比作为高管追踪能力的一部分保留：
-
 - `feishu-executive-comparison/`
 
-## 安装变量
+`feishu-user-token-registry` is intentionally not included. It must be installed and verified through `feishu-user-token-registry-package` before this package is installed.
 
-安装过程中必须解析或询问以下变量：
+## Required Variables
+
+Resolve these from the workspace, administrator input, or runtime config:
 
 ```text
 APP_ID
 APP_SECRET
-INSTALL_CHAT_ID
-USER_OPEN_ID
 AGENT_BASE_TOKEN
 TABLE_ID_高管追踪报告
 TABLE_ID_任务信息表
@@ -45,92 +44,35 @@ TOKEN_TABLE_ID
 BOSS_OPEN_ID
 ```
 
-## 权限范围
+`TOKEN_BASE_TOKEN` and `TOKEN_TABLE_ID` point to the member token storage Bitable verified by the prerequisite package. Do not hardcode them in skill files.
 
-只申请高管追踪和任务追踪需要的权限，不再申请招聘、考勤、竞对、老板每日简报、客户跟进权限。
+## User Token Source
 
-### Bot / Tenant Scope
-
-```text
-admin:app.info:readonly
-application:application:self_manage
-im:message
-im:message:readonly
-im:message.group_msg:get_as_user
-im:message.p2p_msg:get_as_user
-im:chat
-im:chat:read
-im:chat.members:read
-im:message.reactions:read
-contact:user.base:readonly
-contact:contact.base:readonly
-contact:user.id:readonly
-contact:user.employee:readonly
-contact:department.base:readonly
-contact:department.organize:readonly
-bitable:app
-bitable:app:readonly
-base:app:copy
-base:block:read
-base:table:read
-base:table:update
-base:field:read
-base:record:create
-base:record:update
-base:record:read
-base:record:retrieve
-base:record:write
-base:view:read
-base:view:write
-docx:document:create
-docx:document:readonly
-docx:document:write_only
-drive:drive.metadata:readonly
-drive:file:upload
-docs:permission.member:auth
-docs:permission.member:create
-docs:permission.member:transfer
-minutes:minutes:readonly
-minutes:minutes.search:read
-minutes:minutes.basic:read
-minutes:minutes.transcript:export
-task:tasklist:read
-mail:user_mailbox.message.subject:read
-mail:user_mailbox.message.body:read
-mail:user_mailbox.message.address:read
-offline_access
-```
-
-### User OAuth / Token 数据源
-
-外部 token 管理流程负责把已授权用户 token 写入：
+The token table is an external prerequisite. It must already contain:
 
 ```text
-TOKEN_BASE_TOKEN
-TOKEN_TABLE_ID
+成员
+应用ID
+应用秘钥
+授权链接
+回调地址
+授权码
+user_access_token
+refresh_token
+授权状态
+授权时间
+过期时间
 ```
 
-本包安装流程只校验 token 表配置，不在安装过程中强制跑用户 OAuth。
-
-## Base 表结构
-
-本包只要求模板 Base 中存在以下表：
-
-- `高管追踪报告`
-- `任务信息表`
-- `任务跟进记录表`
-- `任务巡检报告`
-- 用户 token 表（由 `TOKEN_BASE_TOKEN` / `TOKEN_TABLE_ID` 指向）
-
-无需校验招聘、考勤、竞对、客户跟进、财务、销售、市场、产品等表。
+This package only reads the token table. It does not send authorization cards and does not create the token registry table.
 
 ## AGENT_ACTION: verify_package_scope
-
-安装后必须确认只存在两个业务入口：
 
 ```bash
 test -f /home/gem/workspace/agent/skills/feishu-boss-work/SKILL.md
 test -f /home/gem/workspace/agent/skills/feishu-exec-task-extractor/SKILL.md
+test -f /home/gem/workspace/agent/skills/feishu-data-collector-v3/SKILL.md
+test ! -d /home/gem/workspace/agent/skills/feishu-user-token-registry
 test ! -d /home/gem/workspace/agent/skills/hire-recruit
 test ! -d /home/gem/workspace/agent/skills/team-vibe-tracker
 test ! -d /home/gem/workspace/agent/skills/attendance-report
@@ -157,17 +99,23 @@ lark-cli --profile {APP_ID} api POST /open-apis/auth/v3/tenant_access_token/inte
 
 ## AGENT_ACTION: verify_permissions
 
-最小验证：
-
 ```bash
 lark-cli --profile {APP_ID} api GET "/open-apis/im/v1/chats?page_size=1" --as bot 2>&1 | grep -q "code.*0" && echo "ok: im"
 lark-cli --profile {APP_ID} api GET "/open-apis/contact/v3/departments?page_size=1" --as bot 2>&1 | grep -q "code.*0" && echo "ok: contact"
 lark-cli --profile {APP_ID} base +base-get --base-token {AGENT_BASE_TOKEN} --as bot 2>&1 | grep -q "code.*0\\|app"
 ```
 
+## AGENT_ACTION: verify_existing_user_token_table
+
+```bash
+lark-cli --profile {APP_ID} base +field-list --base-token {TOKEN_BASE_TOKEN} --table-id {TOKEN_TABLE_ID} --as bot >/dev/null
+```
+
+The Agent should also verify that target members have valid token rows before running tracking workflows.
+
 ## AGENT_ACTION: write_runtime_config
 
-在运行环境或任务配置中写入：
+Write these into runtime environment or task configuration:
 
 ```text
 APP_ID={APP_ID}
@@ -192,11 +140,10 @@ test -f /home/gem/workspace/agent/skills/feishu-minutes-collector/bin/feishu-min
 test -f /home/gem/workspace/agent/skills/feishu-group-collector/bin/feishu-group-collector
 test -f /home/gem/workspace/agent/skills/feishu-p2p-collector/bin/feishu-p2p-collector
 test -f /home/gem/workspace/agent/skills/feishu-mail-collector/bin/feishu-mail-collector
+test ! -d /home/gem/workspace/agent/skills/feishu-user-token-registry
 ```
 
 ## AGENT_ACTION: configure_task_cron
-
-任务追踪需要每日巡检未完成任务，默认：
 
 ```yaml
 schedule:
@@ -205,21 +152,19 @@ schedule:
 payload:
   kind: agentTurn
   message: |
-    运行 task-tracking 每日巡检：
-    1. 读取任务信息表未完成任务
-    2. 用 feishu-data-collector-v3 采集负责人近 7 天数据
-    3. 判断进展、风险、逾期和完成状态
-    4. 更新任务信息表并追加任务跟进记录
-    5. 生成任务巡检报告并推送给老板
+    Run task-tracking daily inspection.
+    Read unfinished tasks, collect the responsible owner's latest 7 days of Feishu data,
+    judge progress/risk/overdue/completion status, update task tables, and generate inspection report.
 ```
 
 ## AGENT_ACTION: final_verify
 
-最终验证必须确认：
+Final verification must confirm:
 
-- 只暴露 `executive-tracking` 和 `task-tracking` 两个业务入口。
-- 两个业务入口可以读取 `AGENT_BASE_TOKEN` 和对应 table id。
-- `feishu-data-collector-v3` 及 6 个底层 collector 存在。
-- 高管追踪可以写入 `高管追踪报告`。
-- 任务追踪可以写入 `任务信息表`、`任务跟进记录表`、`任务巡检报告`。
-- 未安装招聘、团队氛围、考勤、竞对、老板每日简报、客户跟进。
+- Only `executive-tracking` and `task-tracking` are user-facing business entries.
+- `feishu-user-token-registry` is not included in this package.
+- `TOKEN_BASE_TOKEN` and `TOKEN_TABLE_ID` point to an already verified token table.
+- Shared collectors exist.
+- Executive tracking can write `高管追踪报告`.
+- Task tracking can write `任务信息表`, `任务跟进记录表`, and `任务巡检报告`.
+- Removed business skills are not installed.

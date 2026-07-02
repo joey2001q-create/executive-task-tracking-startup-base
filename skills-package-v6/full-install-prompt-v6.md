@@ -1,55 +1,54 @@
-# 高管追踪 + 任务追踪安装提示词 v6
+# Executive Tracking + Task Tracking Install Prompt v6
 
-你收到一个压缩包 `skills-package-v6.zip`。这是正式瘦身版安装包，只保留两个业务入口：
+You received `skills-package-v6.zip`. This is the official slim business package. It contains only two user-facing business entries:
 
-- `executive-tracking`：高管追踪
-- `task-tracking`：任务追踪
+- `executive-tracking`: executive tracking
+- `task-tracking`: task tracking
 
-其他业务 skill（招聘、团队氛围、考勤、竞对分析、老板每日简报、客户跟进等）已移除，不得安装、不得配置、不得在选择卡片中展示。
+Recruiting, team vibe, attendance, competitor intelligence, boss daily briefing, customer follow-up, finance, sales, market, and product sub-skills must not be installed or shown.
 
-## 铁律
+`feishu-user-token-registry` is not included in this package. It must be installed and verified first through the standalone `feishu-user-token-registry-package`.
 
-1. 每一步执行完后必须验证，验证通过才进入下一步。
-2. 验证失败立即停止，报告错误原因和已完成步骤，等待用户指示。
-3. 只安装本包保留的两个业务入口：`executive-tracking` 和 `task-tracking`。
-4. `feishu-data-collector-v3` 和 6 个 `feishu-*-collector` 是共享基础依赖，自动安装，不作为业务入口展示。
-5. 高管横向对比 `feishu-executive-comparison` 作为高管追踪能力的一部分保留，不作为独立业务入口展示。
-6. 用户授权与 Token 管理由外部流程维护；本安装流程只读取 token 表配置并验证采集组件存在。
-7. 字段定义、权限清单、代码架构见同包 `agent-exec-config-v6.md`。
+## Rules
 
-## 步骤 0：确认安装范围
+1. Verify after every step. Continue only after verification passes.
+2. Stop immediately on verification failure and report the failed step.
+3. Expose only `executive-tracking` and `task-tracking` as business entries.
+4. Install shared/internal collectors automatically, but do not show them as user-selectable skills.
+5. Use only an already verified member token table. Do not create token registry setup inside this package.
+6. Do not hardcode App ID, App Secret, Base Token, Table ID, or authorization URLs.
 
-本包没有可选业务范围，固定安装：
+## Step 0: Confirm Prerequisite
+
+Ask the administrator or upstream Agent to confirm that `feishu-user-token-registry-package` has already been verified:
 
 ```text
-INSTALL_SKILLS=("executive-tracking" "task-tracking")
+Feishu app is configured and published.
+Member token storage Bitable exists.
+Bot has management permission on the token storage Bitable.
+Target members have valid user_access_token and refresh_token.
+TOKEN_BASE_TOKEN and TOKEN_TABLE_ID are available to this Agent.
 ```
 
-向用户说明：
+If not confirmed, stop and ask the user to finish the prerequisite package first.
 
-> 本次安装包只保留两个业务入口：高管追踪和任务追踪。底层飞书数据采集组件会自动安装；其他 skill 已清理，不会安装。
-
-## 步骤 1：解压
+## Step 1: Extract
 
 ```bash
 mkdir -p /home/gem/workspace/agent/skills
 unzip skills-package-v6.zip -d /home/gem/workspace/agent/skills/
 ```
 
-如果 zip 解压后外层存在 `skills-package-v6/`，将其下内容移动到 `/home/gem/workspace/agent/skills/`，确保路径形如：
+If the zip extracts an outer `skills-package-v6/` directory, move its skill directories and docs into `/home/gem/workspace/agent/skills/`.
 
-```text
-/home/gem/workspace/agent/skills/feishu-boss-work/SKILL.md
-/home/gem/workspace/agent/skills/feishu-exec-task-extractor/SKILL.md
-```
-
-### 验证 1
+Verify:
 
 ```bash
-test -f /home/gem/workspace/agent/skills/feishu-boss-work/SKILL.md && echo "ok: executive-tracking"
-test -f /home/gem/workspace/agent/skills/feishu-exec-task-extractor/SKILL.md && echo "ok: task-tracking"
-test -f /home/gem/workspace/agent/skills/feishu-data-collector-v3/SKILL.md && echo "ok: data collector"
-test -f /home/gem/workspace/agent/skills/agent-exec-config-v6.md && echo "ok: exec config"
+test -f /home/gem/workspace/agent/skills/feishu-boss-work/SKILL.md
+test -f /home/gem/workspace/agent/skills/feishu-exec-task-extractor/SKILL.md
+test -f /home/gem/workspace/agent/skills/feishu-data-collector-v3/SKILL.md
+test -f /home/gem/workspace/agent/skills/agent-exec-config-v6.md
+test ! -d /home/gem/workspace/agent/skills/feishu-user-token-registry
 test ! -d /home/gem/workspace/agent/skills/hire-recruit
 test ! -d /home/gem/workspace/agent/skills/team-vibe-tracker
 test ! -d /home/gem/workspace/agent/skills/attendance-report
@@ -57,89 +56,50 @@ test ! -d /home/gem/workspace/agent/skills/competitor-intelligence-v2
 test ! -d /home/gem/workspace/agent/skills/feishu-customer-follow-tracker
 ```
 
-通过条件：两个业务入口存在，共享采集层存在，已移除业务不存在。
-
-## 步骤 2：安装 Python 依赖
+## Step 2: Install Python Dependency
 
 ```bash
 python3 -m pip install -i https://pypi.tuna.tsinghua.edu.cn/simple requests
 ```
 
-### 验证 2
+Verify:
 
 ```bash
 python3 - <<'PY'
 import requests
-print("ok: feishu tracking deps")
+print("ok: requests")
 PY
 ```
 
-## 步骤 3：读取执行配置
+## Step 3: Read Execution Config
 
-读取：
+Read:
 
 ```text
 /home/gem/workspace/agent/skills/agent-exec-config-v6.md
 ```
 
-只执行其中与以下标签相关的内容：
+Execute only actions related to:
 
 ```text
 verify_package_scope
 install_dependencies
 verify_credentials
 verify_permissions
+verify_existing_user_token_table
 write_runtime_config
 verify_collectors
 configure_task_cron
 final_verify
 ```
 
-### 验证 3
+## Step 4: Resolve Runtime Variables
 
-```bash
-grep -c "AGENT_ACTION:" /home/gem/workspace/agent/skills/agent-exec-config-v6.md
-```
-
-通过条件：数量不少于 8。
-
-## 步骤 4：获取应用凭证
-
-从入站上下文元数据获取 `account_id`，通过 `gateway config.get` 解析 App ID 和 App Secret。无法自动获取则询问用户：
+Resolve or ask for:
 
 ```text
-请提供飞书自建应用的 App ID 和 App Secret。
-```
-
-### 验证 4
-
-```bash
-lark-cli --profile {APP_ID} api POST /open-apis/auth/v3/tenant_access_token/internal \
-  --data '{"app_id":"{APP_ID}","app_secret":"{APP_SECRET}"}' 2>&1 | grep -q "tenant_access_token"
-```
-
-## 步骤 5：权限检查与授权
-
-只申请高管追踪和任务追踪需要的权限。不要申请招聘、考勤、竞对、老板每日简报、客户跟进权限。
-
-从 `agent-exec-config-v6.md` 读取 scope 清单，生成 URL 编码后的飞书开放平台授权链接。每条链接 scope 数量控制在 22 个以内。
-
-告知用户：
-
-> 请按顺序点击权限链接，开通高管追踪、任务追踪和共享数据采集所需权限。开通后请发布版本或开启调试模式，并将通讯录权限范围设为「全部成员」。
-
-### 验证 5
-
-```bash
-lark-cli --profile {APP_ID} api GET "/open-apis/im/v1/chats?page_size=1" --as bot 2>&1 | grep -q "code.*0" && echo "ok: im" || echo "fail: im"
-lark-cli --profile {APP_ID} api GET "/open-apis/contact/v3/departments?page_size=1" --as bot 2>&1 | grep -q "code.*0" && echo "ok: contact" || echo "fail: contact"
-```
-
-## 步骤 6：配置 Base 与 Token 表
-
-询问或解析以下变量：
-
-```text
+APP_ID
+APP_SECRET
 AGENT_BASE_TOKEN
 TABLE_ID_高管追踪报告
 TABLE_ID_任务信息表
@@ -150,9 +110,49 @@ TOKEN_TABLE_ID
 BOSS_OPEN_ID
 ```
 
-只校验这几张表。不要校验招聘、考勤、竞对、客户跟进等旧表。
+`TOKEN_BASE_TOKEN` and `TOKEN_TABLE_ID` must come from the already verified prerequisite token registry package.
 
-### 验证 6
+Verify credentials:
+
+```bash
+lark-cli --profile {APP_ID} api POST /open-apis/auth/v3/tenant_access_token/internal \
+  --data '{"app_id":"{APP_ID}","app_secret":"{APP_SECRET}"}' 2>&1 | grep -q "tenant_access_token"
+```
+
+## Step 5: Verify Existing Token Table
+
+Do not create or install token registry here. Only verify the existing token table:
+
+```bash
+lark-cli --profile {APP_ID} base +field-list --base-token {TOKEN_BASE_TOKEN} --table-id {TOKEN_TABLE_ID} --as bot >/dev/null
+```
+
+The table must already contain the fields:
+
+```text
+成员
+应用ID
+应用秘钥
+授权链接
+回调地址
+授权码
+user_access_token
+refresh_token
+授权状态
+授权时间
+过期时间
+```
+
+At least one target member should have valid `user_access_token`, `refresh_token`, and `授权状态=有效`.
+
+## Step 6: Verify Permissions
+
+```bash
+lark-cli --profile {APP_ID} api GET "/open-apis/im/v1/chats?page_size=1" --as bot 2>&1 | grep -q "code.*0" && echo "ok: im" || echo "fail: im"
+lark-cli --profile {APP_ID} api GET "/open-apis/contact/v3/departments?page_size=1" --as bot 2>&1 | grep -q "code.*0" && echo "ok: contact" || echo "fail: contact"
+```
+
+## Step 7: Verify Business Base Tables
 
 ```bash
 lark-cli --profile {APP_ID} base +field-list --base-token {AGENT_BASE_TOKEN} --table-id {TABLE_ID_高管追踪报告} --as bot >/dev/null
@@ -161,9 +161,9 @@ lark-cli --profile {APP_ID} base +field-list --base-token {AGENT_BASE_TOKEN} --t
 lark-cli --profile {APP_ID} base +field-list --base-token {AGENT_BASE_TOKEN} --table-id {TABLE_ID_任务巡检报告} --as bot >/dev/null
 ```
 
-## 步骤 7：写入运行配置
+## Step 8: Write Runtime Config
 
-在运行环境或任务配置中写入：
+Write these into runtime environment or task configuration:
 
 ```text
 APP_ID={APP_ID}
@@ -178,7 +178,7 @@ TOKEN_TABLE_ID={TOKEN_TABLE_ID}
 BOSS_OPEN_ID={BOSS_OPEN_ID}
 ```
 
-## 步骤 8：验证共享采集层
+## Step 9: Verify Shared Collectors
 
 ```bash
 test -f /home/gem/workspace/agent/skills/feishu-data-collector-v3/bin/feishu-data-collector-v3
@@ -188,11 +188,12 @@ test -f /home/gem/workspace/agent/skills/feishu-minutes-collector/bin/feishu-min
 test -f /home/gem/workspace/agent/skills/feishu-group-collector/bin/feishu-group-collector
 test -f /home/gem/workspace/agent/skills/feishu-p2p-collector/bin/feishu-p2p-collector
 test -f /home/gem/workspace/agent/skills/feishu-mail-collector/bin/feishu-mail-collector
+test ! -d /home/gem/workspace/agent/skills/feishu-user-token-registry
 ```
 
-## 步骤 9：配置任务追踪定时巡检
+## Step 10: Configure Task Tracking Cron
 
-任务追踪需要每日巡检未完成任务，默认每天 21:00：
+Default daily inspection time is 21:00 Asia/Shanghai:
 
 ```yaml
 schedule:
@@ -201,17 +202,18 @@ schedule:
 payload:
   kind: agentTurn
   message: |
-    运行 task-tracking 每日巡检。
-    读取任务信息表未完成任务，采集负责人近 7 天数据，判断进展/风险/逾期/完成状态，更新任务表并生成巡检报告。
+    Run task-tracking daily inspection.
+    Read unfinished tasks, collect the responsible owner's latest 7 days of Feishu data,
+    judge progress/risk/overdue/completion status, update task tables, and generate inspection report.
 ```
 
-## 步骤 10：最终验证
+## Step 11: Final Verification
 
 ```bash
 find /home/gem/workspace/agent/skills -maxdepth 2 -name SKILL.md | sort
 ```
 
-必须看到：
+Must include:
 
 ```text
 feishu-boss-work/SKILL.md
@@ -226,9 +228,10 @@ feishu-mail-collector/SKILL.md
 feishu-executive-comparison/SKILL.md
 ```
 
-不得看到：
+Must not include:
 
 ```text
+feishu-user-token-registry
 hire-recruit
 team-vibe-tracker
 attendance-report
@@ -241,10 +244,11 @@ market-intelligence
 product-intelligence
 ```
 
-最终报告：
+Final report:
 
 ```text
-已完成高管追踪 executive-tracking 和任务追踪 task-tracking 的安装。
-共享采集底座已安装。
-其他业务 skill 未安装。
+Installed executive-tracking and task-tracking.
+The member token registry prerequisite was verified before this package.
+Shared Feishu collectors are installed.
+No removed business skills were installed.
 ```

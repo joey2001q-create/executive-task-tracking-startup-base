@@ -1,0 +1,84 @@
+#!/usr/bin/env bash
+# feishu-user-registry - send Feishu user OAuth authorization card.
+#
+# Usage:
+#   feishu-user-registry auth <open_id> [user_name]
+#
+# Required runtime variables:
+#   LARK_APP_ID or FEISHU_APP_ID
+#   FEISHU_AUTH_REDIRECT_URI or AUTH_REDIRECT_URI
+
+set -euo pipefail
+
+APP_ID="${LARK_APP_ID:-${FEISHU_APP_ID:-}}"
+AUTH_REDIRECT_URI="${FEISHU_AUTH_REDIRECT_URI:-${AUTH_REDIRECT_URI:-}}"
+
+require_env() {
+  local name="$1"
+  local value="$2"
+  if [ -z "$value" ]; then
+    echo "Missing required environment variable: $name" >&2
+    exit 2
+  fi
+}
+
+urlencode() {
+  local raw="$1"
+  python3 -c 'import sys, urllib.parse; print(urllib.parse.quote(sys.argv[1], safe=""))' "$raw"
+}
+
+cmd_auth() {
+  local open_id="$1"
+  local user_name="${2:-user}"
+
+  if [ -z "$open_id" ]; then
+    echo "Usage: feishu-user-registry auth <open_id> [user_name]" >&2
+    exit 1
+  fi
+
+  require_env "LARK_APP_ID or FEISHU_APP_ID" "$APP_ID"
+  require_env "FEISHU_AUTH_REDIRECT_URI or AUTH_REDIRECT_URI" "$AUTH_REDIRECT_URI"
+
+  local redirect_uri
+  redirect_uri="$(urlencode "$AUTH_REDIRECT_URI")"
+
+  local scopes
+  scopes="calendar%3Acalendar%20calendar%3Acalendar.event%3Aread%20calendar%3Acalendar.free_busy%3Aread%20calendar%3Acalendar.acl%3Aread%20im%3Amessage%20im%3Amessage.group_msg%3Aget_as_user%20im%3Amessage.p2p_msg%3Aget_as_user%20im%3Amessage.send_as_user%20im%3Achat%3Aread%20im%3Achat.members%3Aread%20task%3Atask%3Aread%20task%3Atasklist%3Aread%20task%3Atask%3Awrite%20minutes%3Aminutes%20minutes%3Aminutes.search%3Aread%20minutes%3Aminutes.basic%3Aread%20minutes%3Aminutes.transcript%3Aexport%20search%3Amessage%20search%3Adocs%3Aread%20mail%3Auser_mailbox%3Areadonly%20mail%3Auser_mailbox.message%3Areadonly%20mail%3Auser_mailbox.message.subject%3Aread%20mail%3Auser_mailbox.message.body%3Aread%20mail%3Auser_mailbox.message.address%3Aread%20docs%3Adocument.content%3Aread%20docs%3Adoc%3Areadonly%20drive%3Adrive%3Areadonly%20wiki%3Aspace%3Aread%20wiki%3Awiki%3Areadonly%20contact%3Auser.basic_profile%3Areadonly%20contact%3Auser.base%3Areadonly%20contact%3Auser.id%3Areadonly%20offline_access"
+
+  local state
+  state="auth_${open_id}_$(date +%s)"
+
+  local auth_url
+  auth_url="https://open.feishu.cn/open-apis/authen/v1/authorize?app_id=${APP_ID}&redirect_uri=${redirect_uri}&scope=${scopes}&state=${state}"
+
+  echo "=== Authorization link for ${user_name} ==="
+  echo "$auth_url"
+  echo ""
+  echo "=== Sending bot card ==="
+
+  local content
+  content="{\"config\":{\"wide_screen_mode\":true},\"header\":{\"title\":{\"tag\":\"plain_text\",\"content\":\"Feishu app authorization\"},\"template\":\"blue\"},\"elements\":[{\"tag\":\"div\",\"text\":{\"tag\":\"lark_md\",\"content\":\"**${user_name}**, please authorize the app.\"}},{\"tag\":\"action\",\"actions\":[{\"tag\":\"button\",\"text\":{\"tag\":\"plain_text\",\"content\":\"Authorize now\"},\"type\":\"primary\",\"url\":\"${auth_url}\"}]}]}"
+
+  lark-cli im +messages-send \
+    --msg-type interactive \
+    --content "$content" \
+    --user-id "$open_id" \
+    --as bot \
+    --profile "$APP_ID" 2>&1 | \
+    jq -r 'if .ok then "ok: card sent, message_id: \(.data.message_id)" else "fail: send card, \(.error.message)" end' 2>/dev/null || \
+    echo "ok: card send command finished; inspect lark-cli output if needed"
+}
+
+case "${1:-}" in
+  auth)
+    shift
+    cmd_auth "$@"
+    ;;
+  *)
+    echo "Feishu user token registry"
+    echo ""
+    echo "Usage:"
+    echo "  feishu-user-registry auth <open_id> [name]"
+    exit 1
+    ;;
+esac

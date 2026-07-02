@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# lark-env-run - run a command with the standard Agent/Lark CLI environment.
+#
+# Usage:
+#   lark-env-run <command> [args...]
+
+set -euo pipefail
+
+export HOME=/home/gem
+export WORKSPACE_DIR=/home/gem/workspace
+export OPENCLAW_HOME=/home/gem/workspace/agent
+export OPENCLAW_STATE_DIR=/home/gem/workspace/agent
+export XDG_DATA_HOME=/home/gem/.local/share
+export LARKSUITE_CLI_DATA_DIR=/home/gem/.local/share
+export XDG_RUNTIME_DIR=/tmp/runtime-gem
+
+# Load platform-provided environment values when available.
+if [ -f "$WORKSPACE_DIR/.force/environment/env" ]; then
+  # shellcheck disable=SC1091
+  source "$WORKSPACE_DIR/.force/environment/env" 2>/dev/null
+fi
+
+export PATH="/home/gem/workspace/agent/workspace/skills/feishu-user-token-registry/bin:/home/gem/.npm-global/bin:/usr/bin:/bin:$PATH"
+
+exec "$@"

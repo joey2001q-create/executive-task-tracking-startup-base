@@ -1,0 +1,71 @@
+---
+name: feishu-user-token-registry
+description: |
+  Feishu user OAuth authorization prerequisite.
+  Generate a user authorization link and send an authorization card to a target member.
+alwaysActive: false
+---
+
+# Feishu User Token Registry
+
+## Purpose
+
+This skill is a prerequisite package for executive tracking and task tracking. It only handles member OAuth authorization:
+
+- Generate a Feishu OAuth authorization link.
+- Send the authorization card to a target member.
+- Let the administrator's Bitable/form automation capture the returned authorization URL, code, `user_access_token`, and `refresh_token`.
+
+This skill does not install executive tracking or task tracking, and it does not create the token table automatically.
+
+## Required Manual Setup
+
+Before running this skill, the administrator must manually finish:
+
+- Configure the Feishu OAuth callback URL: `https://open.feishu.cn/open-apis/auth/v1/callback`
+- Enable the required tenant/user scopes for calendar, direct messages, group messages, tasks, minutes, docs/search, mail, contact, and `offline_access`.
+- Set app availability for all members or the target members who need authorization.
+- Publish the Feishu app.
+- Create or copy the member token storage Bitable.
+- Configure fields: `成员`, `应用ID`, `应用秘钥`, `授权链接`, `回调地址`, `授权码`, `user_access_token`, `refresh_token`, `授权状态`, `授权时间`, `过期时间`.
+- Grant the bot management permission on the token storage Bitable.
+
+## Runtime Placeholders
+
+The repository must not contain real environment values. The Agent should fill these from administrator-provided Bitable/config after manual setup:
+
+```text
+LARK_APP_ID={APP_ID}
+LARK_APP_SECRET={APP_SECRET}
+FEISHU_AUTH_REDIRECT_URI={FEISHU_AUTH_REDIRECT_URI}
+TOKEN_BASE_TOKEN={TOKEN_BASE_TOKEN}
+TOKEN_TABLE_ID={TOKEN_TABLE_ID}
+```
+
+`FEISHU_AUTH_REDIRECT_URI` is usually the token collection form URL or callback receiver configured by the administrator. Do not hardcode an environment-specific form URL in this package.
+
+## Usage
+
+```bash
+feishu-user-registry auth <open_id> "<member_name>"
+```
+
+Flow:
+
+```text
+Agent sends authorization card
+Member clicks authorization link
+Member copies/submits the returned authorization URL
+Administrator's Bitable/form automation extracts code and writes tokens
+Agent verifies token table before installing executive/task tracking package
+```
+
+## Validation
+
+The prerequisite package is considered ready only when:
+
+- The Feishu app is published.
+- The token storage Bitable fields exist.
+- The bot can manage the token storage Bitable.
+- At least one target member has a valid `user_access_token` and `refresh_token`.
+- The token table Base/Table IDs are available to the Agent as placeholders, not hardcoded in this package.

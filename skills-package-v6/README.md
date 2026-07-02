@@ -1,15 +1,32 @@
 # Skills Package v6
 
-这是只面向高管追踪和任务追踪的正式瘦身版 skill 包。
+This is the slim business package for executive tracking and task tracking.
 
-## 业务入口
+## Prerequisite
 
-- `executive-tracking`：高管追踪，对应 `feishu-boss-work/`
-- `task-tracking`：任务追踪，对应 `feishu-exec-task-extractor/`
+Before installing this package, install and verify the standalone prerequisite package:
 
-## Shared/Internal 依赖
+```text
+feishu-user-token-registry-package
+```
 
-以下目录是两个业务入口运行需要的共享依赖，不作为用户可选 skill 展示：
+That prerequisite package is responsible for Feishu member OAuth authorization and token table verification. This v6 package only consumes an already verified member token table through placeholders:
+
+```text
+TOKEN_BASE_TOKEN={TOKEN_BASE_TOKEN}
+TOKEN_TABLE_ID={TOKEN_TABLE_ID}
+```
+
+Do not install `feishu-user-token-registry` from this package. It is delivered separately so authorization can be validated first.
+
+## Business Entries
+
+- `executive-tracking`: executive tracking, implemented by `feishu-boss-work/`
+- `task-tracking`: task tracking, implemented by `feishu-exec-task-extractor/`
+
+## Shared/Internal Dependencies
+
+These directories are runtime dependencies for the two business entries. They are internal components, not user-selectable business skills:
 
 - `feishu-data-collector-v3/`
 - `feishu-calendar-collector/`
@@ -20,12 +37,12 @@
 - `feishu-mail-collector/`
 - `feishu-executive-comparison/`
 
-## 安装入口
+## Install Entry
 
-把 `skills-package-v6.zip` 发给 Agent 后，让 Agent 读取并执行：
+After giving `skills-package-v6.zip` to the Agent, ask it to read and execute:
 
 ```text
 full-install-prompt-v6.md
 ```
 
-安装时只应暴露两个业务入口：高管追踪和任务追踪。
+Only two business entries should be exposed to users: executive tracking and task tracking.
