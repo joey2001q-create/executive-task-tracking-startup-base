@@ -24,6 +24,7 @@
 ```text
 AI_STARTUP_PROMPT.md   每次项目启动前、AI 会话开始或接手已有项目时给 Agent 的底座提示词
 AI_TASK_CHECKLIST.md   每次重要任务结束前的文档更新检查清单
+skills-package-v6/     只保留高管追踪和任务追踪的正式瘦身版 skill 安装包目录
 README.md             本仓库说明
 ```
 
@@ -75,6 +76,7 @@ CHANGELOG.md
 - `AI_STARTUP_PROMPT.md` 是项目启动前的底座协议。
 - 具体项目的信息应写在具体项目自己的 `PROJECT_MEMORY.md`、`PROJECT_CONTEXT.md`、`DECISIONS.md` 等文件中。
 - 高管追踪和任务追踪是后续具体项目优先启用的两个 skill，不直接写成这个底座仓库的全部内容。
+- `skills-package-v6/` 只保留 `executive-tracking` 和 `task-tracking` 两个业务入口；飞书数据采集组件作为 shared/internal 依赖保留。
 - 不要把聊天原文、Token、验证码、密钥或敏感路径写入模板仓库。
 - 当项目启动、接手或文档更新的底座规范变化时，再更新本仓库。
 

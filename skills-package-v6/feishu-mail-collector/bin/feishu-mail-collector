@@ -1,0 +1,112 @@
+#!/usr/bin/env python3
+"""
+飞书邮件数据采集器（Python版）
+直接从多维表获取token，避免shell变量截断问题
+"""
+import sys, os, json, argparse, requests
+
+def required_env(*names):
+    for name in names:
+        value = os.environ.get(name)
+        if value:
+            return value
+    raise RuntimeError(f"missing required env: {'/'.join(names)}")
+
+APP_ID = required_env("LARK_APP_ID", "FEISHU_APP_ID")
+APP_SECRET = required_env("LARK_APP_SECRET", "FEISHU_APP_SECRET")
+BASE_TOKEN = required_env("FEISHU_TOKEN_BASE_TOKEN", "FEISHU_BASE_TOKEN", "AGENT_BASE_TOKEN")
+TABLE_ID = required_env("FEISHU_TOKEN_TABLE_ID", "FEISHU_TABLE_ID")
+
+def get_tenant_token():
+    r = requests.post("https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal",
+        json={"app_id": APP_ID, "app_secret": APP_SECRET})
+    return r.json().get("tenant_access_token")
+
+def get_user_token(open_id):
+    """从多维表获取用户token（安全方式，避免shell截断）"""
+    tenant_token = get_tenant_token()
+    url = f"https://open.feishu.cn/open-apis/bitable/v1/apps/{BASE_TOKEN}/tables/{TABLE_ID}/records/search"
+    headers = {"Authorization": f"Bearer {tenant_token}", "Content-Type": "application/json"}
+    payload = {
+        "filter": {"conjunction": "and", "conditions": [
+            {"field_name": "成员", "operator": "is", "value": [open_id]}
+        ]},
+        "page_size": 10
+    }
+    r = requests.post(url, headers=headers, json=payload)
+    data = r.json()
+    if data.get("code") == 0:
+        items = data.get("data", {}).get("items", [])
+        if items:
+            fields = items[0].get("fields", {})
+            token_field = fields.get("user_access_token", "")
+            token = ""
+            if isinstance(token_field, list) and len(token_field) > 0:
+                if isinstance(token_field[0], dict):
+                    token = token_field[0].get("text", "")
+            elif isinstance(token_field, str):
+                token = token_field
+            if len(token) > 100:
+                return token
+    return None
+
+def collect_mail(user_open_id, label_id="INBOX"):
+    """采集邮件"""
+    token = get_user_token(user_open_id)
+    if not token:
+        return {"ok": False, "error": "无法获取用户token", "source": "mail", "user": user_open_id, "count": 0, "items": []}
+
+    headers = {"Authorization": f"Bearer {token}"}
+    
+    all_emails = []
+    page_token = ""
+    
+    for _ in range(10):
+        url = f"https://open.feishu.cn/open-apis/mail/v1/user_mailbox/messages?label_id={label_id}&page_size=20"
+        if page_token:
+            url += f"&page_token={page_token}"
+        
+        try:
+            r = requests.get(url, headers=headers)
+            if not r.headers.get('Content-Type', '').startswith('application/json'):
+                break  # API返回非JSON，可能邮件企业版未开通
+            result = r.json()
+            
+            if result.get("code") == 0:
+                items = result.get("data", {}).get("items", [])
+                all_emails.extend(items)
+                
+                page_token = result.get("data", {}).get("page_token", "")
+                if not page_token:
+                    break
+            else:
+                break
+        except Exception as e:
+            break
+    
+    return {
+        "ok": True,
+        "source": "mail",
+        "user": user_open_id,
+        "count": len(all_emails),
+        "items": all_emails
+    }
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--user", required=True)
+    parser.add_argument("--label-id", default="INBOX", help="邮件标签，默认INBOX")
+    parser.add_argument("--output")
+    args = parser.parse_args()
+
+    result = collect_mail(args.user, args.label_id)
+    output = json.dumps(result, ensure_ascii=False)
+    
+    if args.output:
+        with open(args.output, "w") as f:
+            f.write(output)
+    else:
+        print(output)
+
+if __name__ == "__main__":
+    main()
