@@ -23,6 +23,8 @@ Agent installs registry
 3. Do not hardcode App ID, App Secret, Base Token, Table ID, authorization URLs, or user tokens.
 4. The Agent may install this package before manual Feishu setup is complete.
 5. The Agent must not send authorization cards until the administrator confirms manual Feishu app and Bitable setup is complete.
+6. `FEISHU_AUTH_REDIRECT_URI` has no safe default. It must come from the token table, runtime config, or explicit administrator input.
+7. Do not use `https://open.feishu.cn/open-apis/auth/v1/callback` as the authorization-card `redirect_uri`.
 
 ## Step 1: Install Registry
 
@@ -46,14 +48,15 @@ After this step, stop in "waiting for administrator manual setup" state.
 
 Ask the administrator to confirm all items are complete:
 
-- OAuth callback URL configured: `https://open.feishu.cn/open-apis/auth/v1/callback`
-- Required tenant and user scopes imported and enabled
-- App availability configured for target members
-- Feishu app published
-- Member token storage Bitable created or copied
-- Required token table fields created
-- Bot has management permission on the token storage Bitable
-- App ID, App Secret, Token Base Token, and Token Table ID are available
+- Feishu app OAuth redirect/callback URL is configured.
+- The configured callback/form receiver URL is available in the token table, runtime config, or explicit administrator input.
+- Required tenant and user scopes are imported and enabled.
+- App availability is configured for target members.
+- Feishu app is published.
+- Member token storage Bitable is created or copied.
+- Required token table fields are created.
+- Bot has management permission on the token storage Bitable.
+- App ID, App Secret, Token Base Token, and Token Table ID are available.
 
 Do not send authorization cards before all items above are confirmed.
 
@@ -64,9 +67,15 @@ Read the administrator-provided config and set runtime values:
 ```text
 LARK_APP_ID={APP_ID}
 LARK_APP_SECRET={APP_SECRET}
-FEISHU_AUTH_REDIRECT_URI=https://open.feishu.cn/open-apis/auth/v1/callback
+FEISHU_AUTH_REDIRECT_URI={REAL_CALLBACK_OR_FORM_RECEIVER_URL}
 TOKEN_BASE_TOKEN={TOKEN_BASE_TOKEN}
 TOKEN_TABLE_ID={TOKEN_TABLE_ID}
+```
+
+Reject this invalid value:
+
+```text
+FEISHU_AUTH_REDIRECT_URI=https://open.feishu.cn/open-apis/auth/v1/callback
 ```
 
 ## Step 4: Verify Token Table Structure

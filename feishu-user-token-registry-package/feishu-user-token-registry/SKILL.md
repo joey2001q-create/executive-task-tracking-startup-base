@@ -22,7 +22,7 @@ This skill does not install executive tracking or task tracking, and it does not
 
 Before running this skill, the administrator must manually finish:
 
-- Configure the Feishu OAuth callback URL: `https://open.feishu.cn/open-apis/auth/v1/callback`
+- Configure the Feishu app OAuth redirect/callback URL. This must be the real callback or form receiver URL used by your token collection flow.
 - Enable the required tenant/user scopes for calendar, direct messages, group messages, tasks, minutes, docs/search, mail, contact, and `offline_access`.
 - Set app availability for all members or the target members who need authorization.
 - Publish the Feishu app.
@@ -32,17 +32,17 @@ Before running this skill, the administrator must manually finish:
 
 ## Runtime Placeholders
 
-The repository must not contain real environment values. The Agent should fill these from administrator-provided Bitable/config after manual setup:
+The repository must not contain real environment values. The Agent should fill these from the token table, runtime config, or explicit administrator input after manual setup:
 
 ```text
 LARK_APP_ID={APP_ID}
 LARK_APP_SECRET={APP_SECRET}
-FEISHU_AUTH_REDIRECT_URI={FEISHU_AUTH_REDIRECT_URI}
+FEISHU_AUTH_REDIRECT_URI={REAL_CALLBACK_OR_FORM_RECEIVER_URL}
 TOKEN_BASE_TOKEN={TOKEN_BASE_TOKEN}
 TOKEN_TABLE_ID={TOKEN_TABLE_ID}
 ```
 
-`FEISHU_AUTH_REDIRECT_URI` is usually the token collection form URL or callback receiver configured by the administrator. Do not hardcode an environment-specific form URL in this package.
+`FEISHU_AUTH_REDIRECT_URI` must be the real callback/form receiver URL configured by the administrator. It can come from the token table, runtime config, or explicit administrator input. It has no safe default. Do not use `https://open.feishu.cn/open-apis/auth/v1/callback` as the authorization-card redirect URI.
 
 ## Usage
 
@@ -67,5 +67,6 @@ The prerequisite package is considered ready only when:
 - The Feishu app is published.
 - The token storage Bitable fields exist.
 - The bot can manage the token storage Bitable.
+- The real callback/form receiver URL is available to the Agent.
 - At least one target member has a valid `user_access_token` and `refresh_token`.
 - The token table Base/Table IDs are available to the Agent as placeholders, not hardcoded in this package.

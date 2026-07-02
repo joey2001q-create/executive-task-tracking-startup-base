@@ -12,6 +12,7 @@ set -euo pipefail
 
 APP_ID="${LARK_APP_ID:-${FEISHU_APP_ID:-}}"
 AUTH_REDIRECT_URI="${FEISHU_AUTH_REDIRECT_URI:-${AUTH_REDIRECT_URI:-}}"
+DEFAULT_FEISHU_CALLBACK="https://open.feishu.cn/open-apis/auth/v1/callback"
 
 require_env() {
   local name="$1"
@@ -38,6 +39,12 @@ cmd_auth() {
 
   require_env "LARK_APP_ID or FEISHU_APP_ID" "$APP_ID"
   require_env "FEISHU_AUTH_REDIRECT_URI or AUTH_REDIRECT_URI" "$AUTH_REDIRECT_URI"
+
+  if [ "$AUTH_REDIRECT_URI" = "$DEFAULT_FEISHU_CALLBACK" ]; then
+    echo "Invalid FEISHU_AUTH_REDIRECT_URI: do not use the default Feishu callback endpoint." >&2
+    echo "Use the real callback/form receiver URL from the token table, runtime config, or explicit administrator input." >&2
+    exit 2
+  fi
 
   local redirect_uri
   redirect_uri="$(urlencode "$AUTH_REDIRECT_URI")"
