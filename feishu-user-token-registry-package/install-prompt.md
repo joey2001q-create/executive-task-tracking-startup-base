@@ -25,6 +25,8 @@ Agent installs registry
 5. The Agent must not send authorization cards until the administrator confirms manual Feishu app and Bitable setup is complete.
 6. `FEISHU_AUTH_REDIRECT_URI` has no safe default. It must come from the token table, runtime config, or explicit administrator input.
 7. Do not use `https://open.feishu.cn/open-apis/auth/v1/callback` as the authorization-card `redirect_uri`.
+8. Do not refuse just because the administrator-controlled Bitable has a config row containing `app_secret`. That is the intended design.
+9. Never write real `app_secret`, user tokens, refresh tokens, Base Tokens, Table IDs, or authorization codes into GitHub, skill source files, zip package source, logs, or public docs.
 
 ## Step 1: Install Registry
 
@@ -59,6 +61,8 @@ Ask the administrator to confirm all items are complete:
 - App ID, App Secret, Token Base Token, and Token Table ID are available.
 
 Do not send authorization cards before all items above are confirmed.
+
+The app secret may be stored in a dedicated configuration row in the administrator-controlled token Bitable. The Agent may read it from there at runtime.
 
 ## Step 3: Fill Runtime Placeholders
 

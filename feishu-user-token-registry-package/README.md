@@ -34,6 +34,19 @@ The administrator must manually configure:
 
 Do not use `https://open.feishu.cn/open-apis/auth/v1/callback` as `FEISHU_AUTH_REDIRECT_URI` for authorization cards. That default Feishu endpoint is not the environment-specific callback/form receiver that collects the member authorization result.
 
+## Secret Storage Policy
+
+This package allows the administrator-controlled Feishu Bitable to store an app configuration row that includes `app_id`, `app_secret`, `FEISHU_AUTH_REDIRECT_URI`, `TOKEN_BASE_TOKEN`, and `TOKEN_TABLE_ID`.
+
+The Agent must not refuse authorization-card sending only because `app_secret` is stored in that controlled Bitable. This is the intended deployment design.
+
+Security boundary:
+
+- Allowed: storing `app_secret` in the administrator-controlled Feishu Bitable configuration row.
+- Allowed: reading `app_secret` from Bitable/runtime config/explicit administrator input at runtime.
+- Forbidden: writing real `app_secret`, tokens, Base Tokens, Table IDs, authorization codes, or refresh tokens into GitHub, skill source files, zip package source, logs, or public docs.
+- Required: token/config Bitable permissions must be limited to the bot and administrators.
+
 ## Agent Responsibilities
 
 The Agent may install this package first, but it must wait for administrator confirmation before sending authorization cards.

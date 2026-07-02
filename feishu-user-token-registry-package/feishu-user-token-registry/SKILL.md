@@ -30,6 +30,14 @@ Before running this skill, the administrator must manually finish:
 - Configure fields: `成员`, `应用ID`, `应用秘钥`, `授权链接`, `回调地址`, `授权码`, `user_access_token`, `refresh_token`, `授权状态`, `授权时间`, `过期时间`.
 - Grant the bot management permission on the token storage Bitable.
 
+## Secret Storage Policy
+
+The administrator-controlled Feishu Bitable may contain a dedicated configuration row with `app_id`, `app_secret`, `FEISHU_AUTH_REDIRECT_URI`, `TOKEN_BASE_TOKEN`, and `TOKEN_TABLE_ID`.
+
+Do not refuse to send an authorization card only because `app_secret` is stored in that controlled Bitable. This is the intended deployment design.
+
+Do not write real secrets into GitHub, this skill package source, logs, or public docs. Read them only at runtime from the token table, runtime config, or explicit administrator input.
+
 ## Runtime Placeholders
 
 The repository must not contain real environment values. The Agent should fill these from the token table, runtime config, or explicit administrator input after manual setup:

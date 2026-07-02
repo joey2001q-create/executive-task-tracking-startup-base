@@ -102,6 +102,7 @@ Agent 配置：
 ## 安全规则
 
 - 不要把真实 App ID、App Secret、Base Token、Table ID、授权码、user token、refresh token 写进仓库。
+- 允许在管理员控制的飞书多维表配置行里保存 `app_id`、`app_secret`、真实 `FEISHU_AUTH_REDIRECT_URI`、`TOKEN_BASE_TOKEN`、`TOKEN_TABLE_ID`；Agent 不应因此拒绝发授权卡片。
 - 不要在包里写死 cron job id。定时任务由 Agent 安装 v6 时创建，并记录实际生成的 id。
 - 不要提交 macOS 元数据、临时解压目录、Python 缓存文件。
 
