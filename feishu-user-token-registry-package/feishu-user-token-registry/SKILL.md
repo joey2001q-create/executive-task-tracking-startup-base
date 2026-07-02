@@ -16,7 +16,7 @@ This skill is a prerequisite package for executive tracking and task tracking. I
 - Send the authorization card to a target member.
 - Let the administrator's Bitable/form automation capture the returned authorization URL, code, `user_access_token`, and `refresh_token`.
 
-This skill does not install executive tracking or task tracking, and it does not create the token table automatically.
+This skill does not install executive tracking or task tracking. In v6, the Agent should create the runtime token table by copying the administrator-provided Bitable template, then enable every workflow copied with that template.
 
 ## Required Manual Setup
 
@@ -26,9 +26,21 @@ Before running this skill, the administrator must manually finish:
 - Enable the required tenant/user scopes for calendar, direct messages, group messages, tasks, minutes, docs/search, mail, contact, and `offline_access`.
 - Set app availability for all members, or configure availability so later authorization members can use the app. This setup check must not require a target member list.
 - Publish the Feishu app.
-- Create or copy the member token storage Bitable.
-- Configure fields: `成员`, `应用ID`, `应用秘钥`, `授权链接`, `回调地址`, `授权码`, `user_access_token`, `refresh_token`, `授权状态`, `授权时间`, `过期时间`.
-- Grant the bot management permission on the token storage Bitable.
+- Provide the member token storage Bitable template URL, new table name, and optional target folder URL.
+- Confirm Feishu app scopes, OAuth callback URL, app availability, and app publishing are manually configured.
+- Grant the bot/application management permission on the new token storage Bitable if the copied template does not already provide it.
+
+## Token Table Template Automation
+
+When installing this package, the Agent should:
+
+- Read `install-prompt-v6.md` before taking action.
+- Copy the administrator-provided token Bitable template with the Feishu Drive copy-file API.
+- Get the copied token table `app_token`, `table_id`, and URL.
+- List all workflows in the copied token Bitable.
+- Enable every workflow by setting each workflow status to `Enable`.
+- List workflows again and verify every workflow status is `Enable`.
+- Stop before sending authorization cards if template copy, workflow enabling, field validation, or permission validation fails.
 
 ## Secret Storage Policy
 

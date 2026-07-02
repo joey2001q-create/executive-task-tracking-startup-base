@@ -1,91 +1,77 @@
-# Feishu User Token Registry Package v6
+# 飞书成员 Token Registry Package v6
 
-This is a standalone v6 prerequisite package for executive tracking and task tracking.
+这是高管追踪和任务追踪的前置授权包。
 
-## Correct Flow
+## 给 Agent 的主入口
 
-```text
-Agent installs registry
--> Administrator manually configures Feishu app and Bitable
--> Administrator says "send an authorization card to XX"
--> Agent sends the authorization card
--> Member authorizes and token is written to Bitable
--> Agent verifies the token table
--> Agent installs skills-package-v6
-```
-
-## What It Contains
-
-- `feishu-user-token-registry/`: sends Feishu OAuth authorization cards and writes member tokens to the configured token Bitable.
-
-It does not contain executive tracking or task tracking.
-
-## Manual Configuration
-
-The administrator must manually configure:
-
-- Feishu app OAuth redirect/callback URL. This must be the real callback or form receiver URL used by your token collection flow.
-- Required tenant/user scopes for calendar, messages, chat, task, minutes, search/docs, mail, contact, and `offline_access`.
-- App availability for all members, or availability configured so later authorization members can use the app. This setup check must not require a target member list.
-- App publishing.
-- Member token storage Bitable fields:
-  `成员`, `应用ID`, `应用秘钥`, `授权链接`, `回调地址`, `授权码`, `user_access_token`, `refresh_token`, `授权状态`, `授权时间`, `过期时间`.
-- Bot management permission on the token storage Bitable.
-
-Do not use `https://open.feishu.cn/open-apis/auth/v1/callback` as `FEISHU_AUTH_REDIRECT_URI` for authorization cards. That default Feishu endpoint is not the environment-specific callback/form receiver that collects the member authorization result.
-
-## Secret Storage Policy
-
-This package allows the administrator-controlled Feishu Bitable to store an app configuration row that includes `app_id`, `app_secret`, `FEISHU_AUTH_REDIRECT_URI`, `TOKEN_BASE_TOKEN`, and `TOKEN_TABLE_ID`.
-
-The Agent must not refuse authorization-card sending only because `app_secret` is stored in that controlled Bitable. This is the intended deployment design.
-
-The Agent must also not refuse authorization-card sending only because `LARK_APP_SECRET` is not exported yet. Sending the authorization card only needs `APP_ID` and the real `FEISHU_AUTH_REDIRECT_URI`; `app_secret` is needed later for code-to-token exchange.
-
-Security boundary:
-
-- Allowed: storing `app_secret` in the administrator-controlled Feishu Bitable configuration row.
-- Allowed: reading `app_secret` from Bitable/runtime config/explicit administrator input at runtime.
-- Forbidden: writing real `app_secret`, tokens, Base Tokens, Table IDs, authorization codes, or refresh tokens into GitHub, skill source files, zip package source, logs, or public docs.
-- Required: token/config Bitable permissions must be limited to the bot and administrators.
-
-## Agent Responsibilities
-
-The Agent may install this package first, but it must wait for administrator confirmation before sending authorization cards.
-
-Installation and setup verification do not require any target member name or open_id. Target member resolution happens only after the administrator explicitly asks to send an authorization card to a specific person. Asking for `TARGET_USER_OPEN_ID` during install or setup verification is invalid behavior.
-
-After manual setup is complete, the Agent should:
-
-- Fill runtime placeholders from the token table, runtime config, or explicit administrator input.
-- Verify the token table structure.
-- Read the real `FEISHU_AUTH_REDIRECT_URI` from the token table, runtime config, or explicit administrator input.
-- Send authorization cards on request.
-- Process the returned authorization link/code.
-- Write `user_access_token`, `refresh_token`, status, and expiry fields to the token table.
-- Verify target members have valid token rows.
-
-## Runtime Placeholders
-
-Do not write real values into this repository. The Agent fills these at runtime:
-
-```text
-LARK_APP_ID={APP_ID}
-FEISHU_AUTH_REDIRECT_URI={REAL_CALLBACK_OR_FORM_RECEIVER_URL}
-TOKEN_BASE_TOKEN={TOKEN_BASE_TOKEN}
-TOKEN_TABLE_ID={TOKEN_TABLE_ID}
-```
-
-`FEISHU_AUTH_REDIRECT_URI` must come from your manual configuration: token table, runtime config, or explicit administrator input. The package has no safe default for this value.
-
-Read `LARK_APP_SECRET={APP_SECRET}` later for token exchange, not as a blocker for sending the authorization card.
-
-## Install Prompt
-
-Give this package to the Agent and ask it to read:
+把 `feishu-user-token-registry-package-v6.zip` 发给 Agent 后，请引导它先读：
 
 ```text
 install-prompt-v6.md
 ```
 
-`install-prompt.md` is kept as a compatibility alias for older instructions.
+可直接使用这段提示词：
+
+```text
+请先解压并安装 feishu-user-token-registry-package-v6.zip。
+解压后不要自行推断流程，必须先读取包内 install-prompt-v6.md。
+读取完成后，严格按照 install-prompt-v6.md 执行。
+```
+
+`install-prompt.md` 只是兼容入口，也使用中文流程说明。
+
+## 正确流程
+
+```text
+Agent 安装 registry
+-> 管理员提供 Token 多维表格模板链接、新表名称、可选目标文件夹链接
+-> Agent 调用飞书复制文件 API 复制模板
+-> Agent 获取新 Token 表 app_token / table_id
+-> Agent 列出所有 workflows
+-> Agent 将所有 workflows 全部更新为 Enable
+-> Agent 校验 workflows、字段和权限
+-> 管理员确认飞书应用手动配置完成
+-> 管理员说“给 XX 发授权卡片”
+-> Agent 发送授权卡片
+-> 成员授权，token 写入新 Token 表
+-> Agent 验证 token 表
+-> Agent 安装 skills-package-v6
+```
+
+## 包含内容
+
+- `feishu-user-token-registry/`：生成飞书 OAuth 授权链接并发送授权卡片。
+- `install-prompt-v6.md`：Agent 必须优先读取的中文主执行说明。
+- `install-prompt.md`：兼容旧入口。
+
+本包不包含高管追踪和任务追踪业务 skill。
+
+## 重要规则
+
+- 不要让管理员手动复制 Token 表模板。
+- 不要让管理员手动开启多维表格工作流。
+- Agent 应复制模板里已有的所有 workflows，并全部开启为 `Enable`。
+- Agent 不创建新的 workflow 定义。
+- 安装、模板复制、workflow 开启、字段校验、权限校验阶段，不要询问目标成员 open_id。
+- 只有管理员明确说“给 XX 发授权卡片”后，Agent 才处理该成员 open_id。
+- 不要使用默认回调地址 `https://open.feishu.cn/open-apis/auth/v1/callback` 作为授权卡片 redirect_uri。
+- 发送授权卡片不需要 `LARK_APP_SECRET`；`app_secret` 只在后续 code 换 token 时使用。
+
+## 安全边界
+
+允许：
+
+- 在管理员控制的新 Token 表配置行里保存 `app_id`、`app_secret`、`FEISHU_AUTH_REDIRECT_URI`、`TOKEN_BASE_TOKEN`、`TOKEN_TABLE_ID`。
+- Agent 运行时从新 Token 表、运行时配置或管理员明确输入读取这些值。
+
+禁止：
+
+- 将真实 `app_secret`、user token、refresh token、Base Token、Table ID、授权码写入 GitHub、skill 源码、zip 包源码、日志或公开文档。
+
+## 管理员仍需手动完成
+
+- 飞书应用权限开通。
+- OAuth 回调地址配置。
+- 应用可用范围配置。
+- 应用发布。
+- 必要时给机器人/应用授予新 Token 表可管理权限。
