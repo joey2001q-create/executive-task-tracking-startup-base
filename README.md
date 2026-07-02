@@ -26,13 +26,13 @@ Agent 安装 registry
 开始测试时下载并按顺序安装：
 
 ```text
-feishu-user-token-registry-package.zip
+feishu-user-token-registry-package-v6.zip
 skills-package-v6.zip
 ```
 
 安装顺序不能反：
 
-1. 先安装 `feishu-user-token-registry-package.zip`
+1. 先安装 `feishu-user-token-registry-package-v6.zip`
 2. 你完成飞书应用、多维表、机器人权限和应用发布等手动配置
 3. Agent 发授权卡片并验证 token 表
 4. 再安装 `skills-package-v6.zip`
@@ -110,10 +110,10 @@ Agent 配置：
 
 ## 测试入口
 
-把 `feishu-user-token-registry-package.zip` 发给 Agent 时，让它阅读：
+把 `feishu-user-token-registry-package-v6.zip` 发给 Agent 时，让它阅读：
 
 ```text
-feishu-user-token-registry-package/install-prompt.md
+feishu-user-token-registry-package/install-prompt-v6.md
 ```
 
 把 `skills-package-v6.zip` 发给 Agent 时，让它阅读：

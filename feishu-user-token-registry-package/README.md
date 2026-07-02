@@ -1,6 +1,6 @@
-# Feishu User Token Registry Package
+# Feishu User Token Registry Package v6
 
-This is a standalone prerequisite package for executive tracking and task tracking.
+This is a standalone v6 prerequisite package for executive tracking and task tracking.
 
 ## Correct Flow
 
@@ -85,5 +85,7 @@ Read `LARK_APP_SECRET={APP_SECRET}` later for token exchange, not as a blocker f
 Give this package to the Agent and ask it to read:
 
 ```text
-install-prompt.md
+install-prompt-v6.md
 ```
+
+`install-prompt.md` is kept as a compatibility alias for older instructions.
