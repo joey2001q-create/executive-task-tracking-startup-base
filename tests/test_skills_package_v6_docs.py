@@ -72,7 +72,9 @@ class SkillsPackageV6DocsTests(unittest.TestCase):
 
         self.assertIn("本包内置固定字段结构不可变", text)
         self.assertIn("不要查找、索要或依赖任何历史版本包", text)
-        self.assertIn("自动创建业务 Base", text)
+        self.assertIn("TEMPLATE_BASE_TOKEN=XDvOblimtagfxzsyD5ncxuWHn5I", text)
+        self.assertIn("--without-content", text)
+        self.assertIn("不要自行新建空 Base", text)
         for line in REQUIRED_FIELD_LINES:
             self.assertIn(line, text)
         for option in REQUIRED_OPTIONS:
@@ -83,8 +85,9 @@ class SkillsPackageV6DocsTests(unittest.TestCase):
 
         self.assertIn("本包内置固定字段结构不可变", text)
         self.assertIn("不要查找、索要或依赖任何历史版本包", text)
-        self.assertIn("create_business_base", text)
-        self.assertIn("create_business_fields", text)
+        self.assertIn("copy_business_template_base", text)
+        self.assertIn("verify_business_fields", text)
+        self.assertIn("XDvOblimtagfxzsyD5ncxuWHn5I", text)
         for line in REQUIRED_FIELD_LINES:
             self.assertIn(line, text)
 
@@ -96,6 +99,7 @@ class SkillsPackageV6DocsTests(unittest.TestCase):
         self.assertIn("不得向管理员索要 `AGENT_BASE_TOKEN`", combined)
         self.assertIn("不得向管理员索要这四个 table_id", combined)
         self.assertIn("不要在聊天里向管理员索要或要求粘贴 `APP_SECRET`", combined)
+        self.assertIn("复制模板 Base 后按返回结果和表名自动解析", combined)
         for pattern in FORBIDDEN_ASK_PATTERNS:
             self.assertNotIn(pattern, combined)
 

@@ -31,23 +31,25 @@ feishu-user-token-registry-package-v6.zip
 
 ```text
 Agent 安装 skills-package-v6
--> Agent 自动创建业务 Base「高管追踪与任务追踪数据中枢」
--> Agent 按本包内置固定字段清单创建四张业务表
--> Agent 自动解析 AGENT_BASE_TOKEN
+-> Agent 验证并复制业务模板 Base
+-> Agent 从复制结果自动解析 AGENT_BASE_TOKEN
 -> Agent 按表名解析四张业务表 table_id
+-> Agent 按本包内置固定字段清单校验四张业务表
 -> Agent 写入运行配置
 -> Agent 创建 task-tracking 定时任务
 -> 管理员开始对话测试
 ```
 
-业务 Base：
+业务模板 Base：
 
 ```text
-名称：高管追踪与任务追踪数据中枢
-创建方式：Agent 自动创建
+模板链接：https://ldkj.feishu.cn/base/XDvOblimtagfxzsyD5ncxuWHn5I?from=from_copylink
+TEMPLATE_BASE_TOKEN=XDvOblimtagfxzsyD5ncxuWHn5I
+复制后的业务 Base 名称：高管追踪与任务追踪数据中枢
+复制方式：只复制结构，不复制数据
 ```
 
-必须按本包内置固定字段清单创建并自动解析的业务表：
+必须从复制后的业务 Base 中按表名解析并校验的业务表：
 
 ```text
 高管追踪报告
@@ -78,9 +80,9 @@ full-install-prompt-v6.md
 ```text
 请解压并安装 skills-package-v6.zip。
 解压后不要自行推断流程，必须先读取包内 full-install-prompt-v6.md。
-按文档执行：先验证前置 Token 表，然后自动创建业务 Base「高管追踪与任务追踪数据中枢」，按本包内置固定字段清单创建四张业务表，自动解析 AGENT_BASE_TOKEN 和四张业务表 table_id。
+按文档执行：先验证前置 Token 表，然后验证并复制业务模板 Base（TEMPLATE_BASE_TOKEN=XDvOblimtagfxzsyD5ncxuWHn5I），复制时只复制结构、不复制数据；从复制结果自动解析 AGENT_BASE_TOKEN，再按表名解析四张业务表 table_id，并按本包内置固定字段清单校验字段。
 APP_SECRET 必须由你从已绑定应用、运行时安全配置、lark-cli profile 或前置配置中读取，不要在聊天里向我索要或要求我粘贴。
-不要向我索要 AGENT_BASE_TOKEN 或四个业务表 TABLE_ID，这些必须由你自动创建业务 Base 和业务表后按表名自动解析。
+不要向我索要 AGENT_BASE_TOKEN 或四个业务表 TABLE_ID，这些必须由你复制模板 Base 后按返回结果和表名自动解析。
 ```
 
 ## shared/internal 依赖
@@ -101,7 +103,7 @@ APP_SECRET 必须由你从已绑定应用、运行时安全配置、lark-cli pro
 - 本包不包含 `feishu-user-token-registry`。
 - 本包不发送授权卡片。
 - 本包只读取已验证的 Token 表。
-- 本包会自动创建业务 Base 和四张业务表。
+- 本包会复制指定业务模板 Base，并校验四张业务表。
 - 本包字段必须严格使用包内文档列出的固定字段清单，不得主观新增、删减、改名或改类型。
 - 本包不应向管理员索要 `AGENT_BASE_TOKEN` 或业务表 `TABLE_ID`。
 - 不要把真实 App Secret、Token、Base Token、Table ID、授权码、user token、refresh token、cron job id 写入 GitHub、skill 源码、zip 包源码、日志或公开文档。

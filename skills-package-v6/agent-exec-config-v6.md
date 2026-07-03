@@ -5,7 +5,7 @@
 - `executive-tracking`：高管追踪，对应 `feishu-boss-work/`
 - `task-tracking`：任务追踪，对应 `feishu-exec-task-extractor/`
 
-`feishu-user-token-registry` 不在本包内。前置授权包完成后，本包负责自动创建业务 Base、按本包内置固定字段清单创建业务表，并自动解析业务表 ID。
+`feishu-user-token-registry` 不在本包内。前置授权包完成后，本包负责复制业务模板 Base、按本包内置固定字段清单校验业务表，并自动解析业务表 ID。
 
 ## 运行变量来源
 
@@ -35,8 +35,10 @@ TABLE_ID_任务巡检报告
 ## 业务 Base 与字段规则
 
 ```text
-业务 Base 名称：高管追踪与任务追踪数据中枢
-创建方式：Agent 自动创建
+模板链接：https://ldkj.feishu.cn/base/XDvOblimtagfxzsyD5ncxuWHn5I?from=from_copylink
+TEMPLATE_BASE_TOKEN=XDvOblimtagfxzsyD5ncxuWHn5I
+复制后的业务 Base 名称：高管追踪与任务追踪数据中枢
+创建方式：Agent 复制模板结构，不复制数据
 字段来源：当前 v6 包内置固定字段清单
 ```
 
@@ -102,12 +104,33 @@ refresh_token
 
 至少一名目标成员必须有有效 `user_access_token` 和 `refresh_token`。
 
-## AGENT_ACTION: create_business_base
+## AGENT_ACTION: copy_business_template_base
 
-创建业务 Base，名称固定为：
+复制业务模板 Base。不要自行新建空 Base，不要手动创建字段。
+
+模板信息：
 
 ```text
-高管追踪与任务追踪数据中枢
+模板链接：https://ldkj.feishu.cn/base/XDvOblimtagfxzsyD5ncxuWHn5I?from=from_copylink
+TEMPLATE_BASE_TOKEN=XDvOblimtagfxzsyD5ncxuWHn5I
+复制后的业务 Base 名称：高管追踪与任务追踪数据中枢
+```
+
+复制前验证模板可读、表可见：
+
+```bash
+lark-cli --profile {APP_ID} base +base-get --base-token XDvOblimtagfxzsyD5ncxuWHn5I --as bot
+lark-cli --profile {APP_ID} base +table-list --base-token XDvOblimtagfxzsyD5ncxuWHn5I --as bot --format json
+```
+
+复制模板结构：
+
+```bash
+lark-cli --profile {APP_ID} base +base-copy \
+  --base-token XDvOblimtagfxzsyD5ncxuWHn5I \
+  --name "高管追踪与任务追踪数据中枢" \
+  --without-content \
+  --as bot
 ```
 
 创建成功后记录：
@@ -116,11 +139,11 @@ refresh_token
 AGENT_BASE_TOKEN={generated business base token}
 ```
 
-不得向管理员索要 `AGENT_BASE_TOKEN`。创建失败时停止并报告接口错误。
+不得向管理员索要 `AGENT_BASE_TOKEN`。模板不可读、复制失败或复制结果无法解析 token 时停止并报告接口错误。
 
-## AGENT_ACTION: create_business_tables
+## AGENT_ACTION: resolve_business_table_ids
 
-在 `{AGENT_BASE_TOKEN}` 中创建四张表：
+不要手动创建业务表。复制完成后在 `{AGENT_BASE_TOKEN}` 中按表名解析四张表：
 
 ```text
 高管追踪报告
@@ -140,9 +163,9 @@ TABLE_ID_任务巡检报告
 
 不得向管理员索要这些 table_id。
 
-## AGENT_ACTION: create_business_fields
+## AGENT_ACTION: verify_business_fields
 
-字段必须严格按本包内置固定字段清单创建和校验。
+字段必须严格按本包内置固定字段清单校验。不要手动新增、删除、改名或改类型。
 
 ### 高管追踪报告
 
@@ -202,13 +225,14 @@ TABLE_ID_任务巡检报告
 巡检报告：文本 / URL 文本
 ```
 
-字段创建规则：
+字段校验规则：
 
 ```text
-可创建字段必须严格使用本文固定字段清单中的字段名和类型。
-系统字段、公式字段、查找字段、双向链接字段如果不能通过 API 创建，必须报告具体限制，不得改成普通文本字段。
-option_id 不强求沿用历史 ID，但选项名称必须一致。
-字段创建失败时停止安装，报告表名、字段名、字段类型和接口错误。
+复制后的模板字段必须严格符合本文固定字段清单中的字段名和类型。
+任务信息表不得用默认 ID 字段替代任务编号。
+任务跟进记录表不得用默认 ID 字段替代跟进记录编号。
+系统字段、公式字段、查找字段、双向链接字段如果无法通过 API 完整验证，必须报告具体限制，不得假装验证通过。
+字段校验失败时停止安装，报告表名、字段名、字段类型和差异。
 不得新增 追踪周期、报告摘要、巡检摘要、风险数量。
 ```
 
@@ -344,10 +368,10 @@ task-tracking cron：dry-run 或手动触发一次每日巡检。
 - 只暴露 `executive-tracking` 和 `task-tracking`。
 - `feishu-user-token-registry` 不在本包内。
 - 前置 Token 表已验证。
-- 业务 Base 已自动创建。
-- `AGENT_BASE_TOKEN` 由创建结果自动解析。
+- 业务 Base 已从指定模板复制生成。
+- `AGENT_BASE_TOKEN` 由复制结果自动解析。
 - 四张业务表 table_id 已按表名自动解析。
-- 四张业务表字段已按本包固定字段清单创建并验证。
+- 四张业务表字段已按本包固定字段清单校验通过。
 - shared/internal collector 存在。
 - 高管追踪可写入 `高管追踪报告`。
 - 任务追踪可写入 `任务信息表`、`任务跟进记录表`、`任务巡检报告`。

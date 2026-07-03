@@ -18,13 +18,14 @@ Agent 安装 registry
 -> 成员授权，token 写入 Token 表
 -> Agent 验证 Token 表
 -> Agent 安装 skills-package-v6
--> Agent 自动创建业务 Base，生成业务数据中枢
--> Agent 解析并记录高管追踪和任务追踪所需 table_id
+-> Agent 校验并复制业务模板 Base，生成业务数据中枢
+-> Agent 从复制结果解析并记录 AGENT_BASE_TOKEN
+-> Agent 按表名解析并记录高管追踪和任务追踪所需 table_id
 -> Agent 创建 task-tracking 定时任务
 -> 管理员通过对话测试高管追踪和任务追踪
 ```
 
-本文件从 `Agent 安装 skills-package-v6` 开始执行。不要跳过业务 Base / 业务表自动创建步骤。
+本文件从 `Agent 安装 skills-package-v6` 开始执行。不要跳过业务模板 Base 校验、复制和表结构校验步骤。
 
 ## 核心规则
 
@@ -33,7 +34,7 @@ Agent 安装 registry
 3. 只暴露 `executive-tracking` 和 `task-tracking` 两个业务入口。
 4. shared/internal collector 自动安装，但不要作为用户可选 skill 展示。
 5. Token 表只读取已验证的前置 registry 结果，不在本包内创建或发送授权卡片。
-6. 业务 Base 必须由 Agent 自动创建，不要向管理员索要 `AGENT_BASE_TOKEN` 或四个业务 `TABLE_ID`。
+6. 业务 Base 必须由 Agent 从指定业务模板 Base 复制生成，不要自行新建空 Base，也不要向管理员索要 `AGENT_BASE_TOKEN` 或四个业务 `TABLE_ID`。
 7. 不要把 App Secret、Token、Base Token、Table ID、授权码、user token、refresh token、cron job id 写入 GitHub、skill 源码或公开文档。
 8. `BOSS_OPEN_ID` 优先从当前对话用户/管理员身份解析；无法解析时，只询问一次。
 9. 创建 task-tracking 定时任务后，记录真实生成的 job id，不要写死。
@@ -136,7 +137,8 @@ TOKEN_TABLE_ID
 - 不要在聊天里向管理员索要或要求粘贴 `APP_SECRET`。
 - 如果无法读取 `APP_SECRET`，停止安装并提示管理员先完成飞书应用绑定/运行时凭证配置；不要让管理员把 secret 发在对话里。
 - 这里不能要求管理员提供 `AGENT_BASE_TOKEN` 或业务表 `TABLE_ID`。
-- `AGENT_BASE_TOKEN` 和业务表 `TABLE_ID` 必须由后续业务 Base / 业务表自动创建结果生成。
+- `AGENT_BASE_TOKEN` 必须由后续模板 Base 复制结果生成。
+- 业务表 `TABLE_ID` 必须由复制后的业务 Base 按表名自动解析。
 
 验证应用凭证：
 
@@ -177,22 +179,57 @@ refresh_token 存在
 授权状态=有效
 ```
 
-## Step 6：创建业务 Base
+## Step 6：复制业务模板 Base
 
-业务数据中枢必须由 Agent 自动创建，生成：
+业务数据中枢必须由 Agent 从指定业务模板 Base 复制生成，不要自行新建空 Base，不要手动重建字段。
+
+业务模板 Base：
 
 ```text
-AGENT_BASE_TOKEN={GENERATED_BUSINESS_BASE_TOKEN}
-业务 Base 名称：高管追踪与任务追踪数据中枢
+模板链接：https://ldkj.feishu.cn/base/XDvOblimtagfxzsyD5ncxuWHn5I?from=from_copylink
+TEMPLATE_BASE_TOKEN=XDvOblimtagfxzsyD5ncxuWHn5I
+复制后的业务 Base 名称：高管追踪与任务追踪数据中枢
 ```
 
-不得向管理员索要 `AGENT_BASE_TOKEN`。如果创建 Base 的接口或命令失败，停止安装并报告具体错误。
+复制前先验证模板可读：
 
-不得复制任何外部或历史全量模板 Base 来替代建表，因为那会带入无关业务表；v6 只创建本文定义的四张业务表。
+```bash
+lark-cli --profile {APP_ID} base +base-get --base-token XDvOblimtagfxzsyD5ncxuWHn5I --as bot
+lark-cli --profile {APP_ID} base +table-list --base-token XDvOblimtagfxzsyD5ncxuWHn5I --as bot --format json
+```
 
-## Step 7：按本包固定字段清单创建四张业务表
+必须能看到以下四张表：
 
-在 `{AGENT_BASE_TOKEN}` 中创建并记录：
+```text
+高管追踪报告
+任务信息表
+任务跟进记录表
+任务巡检报告
+```
+
+复制模板结构，不复制数据：
+
+```bash
+lark-cli --profile {APP_ID} base +base-copy \
+  --base-token XDvOblimtagfxzsyD5ncxuWHn5I \
+  --name "高管追踪与任务追踪数据中枢" \
+  --without-content \
+  --as bot
+```
+
+从返回结果优先提取 `app_token`，兼容兜底 `base_token`，记录为：
+
+```text
+AGENT_BASE_TOKEN={COPIED_BUSINESS_BASE_TOKEN}
+```
+
+不得向管理员索要 `AGENT_BASE_TOKEN`。如果模板不可读、复制失败、或复制结果中无法解析 `app_token/base_token`，立即停止并报告具体错误。
+
+如果能解析 `USER_OPEN_ID`，将复制后的 Base 所有者转让给管理员，Bot 保留 full_access；无法解析时不要编造用户 ID，报告限制并继续后续表结构校验。
+
+## Step 7：解析业务表 ID 并校验结构
+
+不要手动创建业务表，不要手动重建字段。必须从复制后的 `{AGENT_BASE_TOKEN}` 中按表名解析并记录：
 
 ```text
 TABLE_ID_高管追踪报告={generated table_id}
@@ -272,13 +309,14 @@ TABLE_ID_任务巡检报告={generated table_id}
 巡检报告：文本 / URL 文本
 ```
 
-### 字段创建规则
+### 字段校验规则
 
-- 可创建字段必须严格使用本文固定字段清单中的字段名和类型。
-- 系统字段、公式字段、查找字段、双向链接字段如果不能通过 API 创建，Agent 必须报告具体限制，不得改成普通文本字段。
-- 字段 option_id 不强求沿用历史 ID，因为新建表会生成新 option_id；但选项名称必须一致。
-- 字段创建失败时停止安装，报告表名、字段名、字段类型和接口错误。
+- 不要手动新增、删除、改名或改类型。
 - 不要用自造字段替代本文固定字段。
+- 如果复制后的模板缺少字段、字段类型不一致、选项名称不一致、主字段/公式/查找/链接关系不一致，立即停止并报告具体表名、字段名和差异。
+- `任务信息表` 不得用默认 `ID` 字段替代 `任务编号`。`任务编号` 必须符合模板中的主字段/主键/公式语义。
+- `任务跟进记录表` 不得用默认 `ID` 字段替代 `跟进记录编号`。`跟进记录编号` 必须符合模板中的主字段/主键/公式语义。
+- 如果飞书 API 无法完整读取某类字段元信息，必须报告“无法验证的字段类型和原因”，不要假装验证通过。
 
 ## Step 8：验证业务表和字段
 
@@ -418,10 +456,10 @@ TASK_TRACKING_CRON_TZ=Asia/Shanghai
 ```text
 executive-tracking 和 task-tracking 已安装。
 前置 Token 表已验证。
-业务 Base 已自动创建。
-AGENT_BASE_TOKEN 已自动解析。
+业务 Base 已从指定模板复制生成。
+AGENT_BASE_TOKEN 已从复制结果自动解析。
 四张业务表 table_id 已按表名自动解析并验证。
-四张业务表字段已按本包固定字段清单创建并验证。
+四张业务表字段已按本包固定字段清单校验通过。
 shared/internal collector 已安装。
 task-tracking 定时任务已创建并记录 job id。
 可以开始通过对话测试高管追踪和任务追踪。
