@@ -52,6 +52,8 @@ Agent 安装 registry
 11. 发送授权卡片不需要 `LARK_APP_SECRET` / `FEISHU_APP_SECRET`；`app_secret` 只在后续 code 换 token 时使用。
 12. 安装、模板复制、workflow 开启、字段校验、权限校验阶段，不要询问目标成员姓名、open_id 或 `TARGET_USER_OPEN_ID`。
 13. 只有当管理员明确说“给 XX 发授权卡片”后，才可以解析或询问该成员 open_id。
+14. 授权卡片只使用中文文案。不要额外手写或补发英文授权卡片。
+15. `feishu-user-registry auth` 命令退出码为 0 时，即使没有解析到 `message_id`，也视为发送命令已完成；不要自动或手动重复发送授权卡片，应先检查飞书消息历史或让管理员确认成员是否收到。
 
 ## 管理员需要提供的信息
 
@@ -238,6 +240,13 @@ feishu-user-registry auth <open_id> "<member_name>"
 ```
 
 该命令只生成 OAuth 授权链接并发送授权卡片，不需要 `LARK_APP_SECRET`。
+
+发送规则：
+
+- 卡片标题、正文和按钮必须使用中文。
+- 如果命令输出 `ok: 中文授权卡片已发送`，不要再次发送。
+- 如果命令输出“中文授权卡片发送命令已成功完成，但未解析到 message_id”，不要再次发送；先检查飞书消息历史，或让管理员确认成员是否收到。
+- 只有命令明确返回失败或管理员确认成员没有收到时，才允许重新发送。
 
 ## Step 9：验证 Token 写入
 

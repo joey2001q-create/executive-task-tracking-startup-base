@@ -62,22 +62,40 @@ cmd_auth() {
   local auth_url
   auth_url="https://open.feishu.cn/open-apis/authen/v1/authorize?app_id=${APP_ID}&redirect_uri=${redirect_uri}&scope=${scopes}&state=${state}"
 
-  echo "=== Authorization link for ${user_name} ==="
+  echo "=== ${user_name} 的授权链接 ==="
   echo "$auth_url"
   echo ""
-  echo "=== Sending bot card ==="
+  echo "=== 正在发送授权卡片 ==="
 
   local content
-  content="{\"config\":{\"wide_screen_mode\":true},\"header\":{\"title\":{\"tag\":\"plain_text\",\"content\":\"Feishu app authorization\"},\"template\":\"blue\"},\"elements\":[{\"tag\":\"div\",\"text\":{\"tag\":\"lark_md\",\"content\":\"**${user_name}**, please authorize the app.\"}},{\"tag\":\"action\",\"actions\":[{\"tag\":\"button\",\"text\":{\"tag\":\"plain_text\",\"content\":\"Authorize now\"},\"type\":\"primary\",\"url\":\"${auth_url}\"}]}]}"
+  content="{\"config\":{\"wide_screen_mode\":true},\"header\":{\"title\":{\"tag\":\"plain_text\",\"content\":\"授权卡片\"},\"template\":\"blue\"},\"elements\":[{\"tag\":\"div\",\"text\":{\"tag\":\"lark_md\",\"content\":\"**${user_name}**，请点击下方按钮完成飞书应用授权。\\n授权链接短时间内有效，如已过期请联系管理员重新发送。\"}},{\"tag\":\"action\",\"actions\":[{\"tag\":\"button\",\"text\":{\"tag\":\"plain_text\",\"content\":\"立即授权\"},\"type\":\"primary\",\"url\":\"${auth_url}\"}]}]}"
 
-  lark-cli im +messages-send \
+  local send_output
+  local send_status
+  set +e
+  send_output="$(lark-cli im +messages-send \
     --msg-type interactive \
     --content "$content" \
     --user-id "$open_id" \
     --as bot \
-    --profile "$APP_ID" 2>&1 | \
-    jq -r 'if .ok then "ok: card sent, message_id: \(.data.message_id)" else "fail: send card, \(.error.message)" end' 2>/dev/null || \
-    echo "ok: card send command finished; inspect lark-cli output if needed"
+    --profile "$APP_ID" 2>&1)"
+  send_status=$?
+  set -e
+
+  if [ "$send_status" -ne 0 ]; then
+    echo "fail: 授权卡片发送命令失败" >&2
+    echo "$send_output" >&2
+    exit "$send_status"
+  fi
+
+  local message_id
+  message_id="$(printf '%s' "$send_output" | jq -r '.data.message_id // .data.message.message_id // .message_id // empty' 2>/dev/null || true)"
+  if [ -n "$message_id" ]; then
+    echo "ok: 中文授权卡片已发送，message_id: ${message_id}"
+  else
+    echo "ok: 中文授权卡片发送命令已成功完成，但未解析到 message_id。"
+    echo "不要自动或手动重复发送授权卡片；请先检查飞书消息历史，或让管理员确认成员是否已收到。"
+  fi
 }
 
 case "${1:-}" in

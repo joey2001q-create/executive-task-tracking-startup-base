@@ -56,6 +56,8 @@ Agent 安装 registry
 - 只有管理员明确说“给 XX 发授权卡片”后，Agent 才处理该成员 open_id。
 - 不要使用默认回调地址 `https://open.feishu.cn/open-apis/auth/v1/callback` 作为授权卡片 redirect_uri。
 - 发送授权卡片不需要 `LARK_APP_SECRET`；`app_secret` 只在后续 code 换 token 时使用。
+- 授权卡片只使用中文文案。
+- 如果发卡命令成功或退出码为 0，不要重复发送授权卡片；如未解析到 `message_id`，先检查消息历史或让管理员确认是否收到。
 
 ## 安全边界
 

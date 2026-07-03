@@ -16,6 +16,18 @@ class RegistryRedirectUriTests(unittest.TestCase):
         self.assertIn("Invalid FEISHU_AUTH_REDIRECT_URI", script)
         self.assertIn("token table, runtime config, or explicit administrator input", script)
 
+    def test_authorization_card_is_chinese_and_prevents_duplicate_resend(self):
+        script = SCRIPT.read_text(encoding="utf-8")
+
+        self.assertIn("授权卡片", script)
+        self.assertIn("立即授权", script)
+        self.assertIn("请点击下方按钮完成飞书应用授权", script)
+        self.assertIn("不要自动或手动重复发送授权卡片", script)
+        self.assertIn(".data.message_id // .data.message.message_id // .message_id", script)
+        self.assertNotIn("Feishu app authorization", script)
+        self.assertNotIn("Authorize now", script)
+        self.assertNotIn("please authorize the app", script)
+
 
 if __name__ == "__main__":
     unittest.main()

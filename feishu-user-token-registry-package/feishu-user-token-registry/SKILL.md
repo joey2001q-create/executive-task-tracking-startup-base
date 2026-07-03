@@ -54,6 +54,8 @@ Important: `app_secret` is not required for sending the authorization card. The 
 
 Important: target member name/open_id is not required during installation or setup verification. Ask for or resolve a target member only after the administrator explicitly says to send an authorization card to that person. Asking for `TARGET_USER_OPEN_ID` during install, setup confirmation, placeholder filling, or token table verification is invalid behavior.
 
+Important: the authorization card must use Chinese copy only. If the `feishu-user-registry auth` command exits with status 0, do not send another card manually, even if the CLI output did not expose a parseable `message_id`. First check Feishu message history or ask the administrator to confirm whether the member received it.
+
 ## Runtime Placeholders
 
 The repository must not contain real environment values. The Agent should fill these from the token table, runtime config, or explicit administrator input after manual setup:
