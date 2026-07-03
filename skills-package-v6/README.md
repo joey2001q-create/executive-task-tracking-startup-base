@@ -36,7 +36,7 @@ Agent 安装 skills-package-v6
 -> Agent 按表名解析四张业务表 table_id
 -> Agent 校验复制后的四张业务表字段结构
 -> Agent 写入运行配置
--> Agent 创建 task-tracking 定时任务
+-> Agent 创建 task-tracking 北京时间定时任务
 -> 管理员开始对话测试
 ```
 
@@ -99,4 +99,5 @@ APP_SECRET 必须由你从已绑定应用、运行时安全配置、lark-cli pro
 - 本包会复制指定业务模板 Base，并校验四张业务表。
 - 本包字段结构以业务模板 Base 为准；复制后只校验，不得主观新增、删减、改名或改类型。
 - 本包不应向管理员索要 `AGENT_BASE_TOKEN` 或业务表 `TABLE_ID`。
+- task-tracking 定时任务必须使用北京时间，时区显式设置为 `Asia/Shanghai`。
 - 不要把真实 App Secret、Token、Base Token、Table ID、授权码、user token、refresh token、cron job id 写入 GitHub、skill 源码、zip 包源码、日志或公开文档。

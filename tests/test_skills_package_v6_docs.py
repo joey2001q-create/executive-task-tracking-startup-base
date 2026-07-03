@@ -101,6 +101,16 @@ class SkillsPackageV6DocsTests(unittest.TestCase):
         for forbidden in FORBIDDEN_PACKAGE_DIRS:
             self.assertNotIn(forbidden, skill_dirs)
 
+    def test_task_cron_uses_beijing_time(self):
+        combined = "\n".join(
+            path.read_text(encoding="utf-8") for path in [FULL_PROMPT, EXEC_CONFIG, README]
+        )
+
+        self.assertIn("北京时间", combined)
+        self.assertIn("Asia/Shanghai", combined)
+        self.assertIn("TASK_TRACKING_CRON_TZ=Asia/Shanghai", combined)
+        self.assertIn("TASK_TRACKING_CRON_TIME_DESC=北京时间每天 21:00", combined)
+
 
 if __name__ == "__main__":
     unittest.main()

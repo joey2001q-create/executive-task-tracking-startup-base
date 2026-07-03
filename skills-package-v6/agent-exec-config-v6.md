@@ -270,7 +270,7 @@ test ! -d /home/gem/workspace/agent/skills/feishu-user-token-registry
 
 ## AGENT_ACTION: configure_task_cron
 
-创建新的 task-tracking 巡检定时任务：
+创建新的 task-tracking 巡检定时任务。所有定时任务必须使用北京时间，时区显式设置为 `Asia/Shanghai`：
 
 ```yaml
 schedule:
@@ -290,6 +290,7 @@ payload:
 TASK_TRACKING_CRON_JOB_ID={generated_job_id}
 TASK_TRACKING_CRON="0 21 * * *"
 TASK_TRACKING_CRON_TZ=Asia/Shanghai
+TASK_TRACKING_CRON_TIME_DESC=北京时间每天 21:00
 ```
 
 ## AGENT_ACTION: conversation_tests

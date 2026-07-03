@@ -9,7 +9,7 @@
 ## 同步流程
 
 ```
-[定时 cron 触发，默认每天 21:00]
+[定时 cron 触发，默认北京时间每天 21:00，时区 Asia/Shanghai]
    ↓
 1. 拉多维表所有"未完成"任务（状态 ≠ 已完成/已取消）
    base +record-list {{TABLE_ID_任务信息表}}，过滤状态
@@ -136,7 +136,7 @@ def check_overdue(task):
 
 - **名称**：任务巡检与状态同步
 - **job id**：创建成功后记录实际生成的 `TASK_TRACKING_CRON_JOB_ID`
-- **调度**：每天 21:00 (Asia/Shanghai)
+- **调度**：北京时间每天 21:00 (Asia/Shanghai)
 - **会话**：isolated
 - **推送**：黄杰（user:{{BOSS_OPEN_ID}}）或管理员指定目标
 - **逻辑**：拉未完成任务 → 按负责人拉原始数据 → AI 判断进展 → 状态变化则更新任务表+追加跟进记录 → 发巡检报告

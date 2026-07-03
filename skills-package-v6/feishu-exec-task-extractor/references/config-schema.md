@@ -193,7 +193,7 @@ output:
 
 ```yaml
 name: 高管任务每日同步
-description: 每天 21:00 自动从高管报告同步任务到多维表
+description: 北京时间每天 21:00 自动从高管报告同步任务到多维表
 schedule:
   kind: cron
   expr: "0 21 * * *"
@@ -259,7 +259,7 @@ delivery:
 "同步下去，dry_run: false"
 ```
 
-**Step 3**: 创建 cron job，每天 21:00 自动跑。
+**Step 3**: 创建 cron job，北京时间每天 21:00 自动跑，时区必须为 Asia/Shanghai。
 
 ## 失败处理
 

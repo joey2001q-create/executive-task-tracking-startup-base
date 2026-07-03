@@ -346,7 +346,7 @@ test ! -d /home/gem/workspace/agent/skills/feishu-user-token-registry
 
 安装 v6 时必须创建新的任务巡检定时任务。不要假设已有 job id。
 
-默认每天 21:00 Asia/Shanghai：
+默认每天北京时间 21:00，时区必须显式设置为 `Asia/Shanghai`：
 
 ```yaml
 schedule:
@@ -366,6 +366,7 @@ payload:
 TASK_TRACKING_CRON_JOB_ID={generated_job_id}
 TASK_TRACKING_CRON="0 21 * * *"
 TASK_TRACKING_CRON_TZ=Asia/Shanghai
+TASK_TRACKING_CRON_TIME_DESC=北京时间每天 21:00
 ```
 
 ## Step 13：对话测试
