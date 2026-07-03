@@ -67,20 +67,22 @@ FORBIDDEN_ASK_PATTERNS = [
 
 
 class SkillsPackageV6DocsTests(unittest.TestCase):
-    def test_full_prompt_contains_complete_v5_field_schema(self):
+    def test_full_prompt_contains_complete_fixed_field_schema(self):
         text = FULL_PROMPT.read_text(encoding="utf-8")
 
-        self.assertIn("v5 字段结构不可变", text)
+        self.assertIn("本包内置固定字段结构不可变", text)
+        self.assertIn("不要查找、索要或依赖任何历史版本包", text)
         self.assertIn("自动创建业务 Base", text)
         for line in REQUIRED_FIELD_LINES:
             self.assertIn(line, text)
         for option in REQUIRED_OPTIONS:
             self.assertIn(option, text)
 
-    def test_exec_config_contains_same_v5_field_schema(self):
+    def test_exec_config_contains_same_fixed_field_schema(self):
         text = EXEC_CONFIG.read_text(encoding="utf-8")
 
-        self.assertIn("v5 字段结构不可变", text)
+        self.assertIn("本包内置固定字段结构不可变", text)
+        self.assertIn("不要查找、索要或依赖任何历史版本包", text)
         self.assertIn("create_business_base", text)
         self.assertIn("create_business_fields", text)
         for line in REQUIRED_FIELD_LINES:
