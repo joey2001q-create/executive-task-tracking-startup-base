@@ -30,31 +30,13 @@ FORBIDDEN_PACKAGE_DIRS = {
 }
 
 
-REQUIRED_FIELD_LINES = [
-    "追踪人：用户字段",
-    "追踪报告：文本 / URL 文本",
-    "任务编号：公式，主键，自动生成",
-    "任务标题：文本",
-    "详细描述：文本",
-    "负责人：单选用户",
-    "任务状态：单选",
-    "是否卡点：单选",
-    "截止日期：日期",
-    "创建人：系统字段，自动",
-    "任务跟进：双向链接，自动回填",
-    "跟进记录数：查找，自动",
-    "跟进记录编号：公式，主键，自动",
-    "关联任务：单向链接，关联任务信息表",
-    "跟进内容：文本",
-    "创建时间：系统字段，自动",
-    "任务负责人：查找，自动",
-    "任务信息表：双向链接，自动回填",
-    "巡检日期：日期",
-    "巡检报告：文本 / URL 文本",
-]
-
-REQUIRED_OPTIONS = ["待执行", "进行中", "已完成", "已逾期", "阻塞", "是", "否"]
 FORBIDDEN_SUBJECTIVE_FIELDS = ["追踪周期", "报告摘要", "巡检摘要", "风险数量"]
+FORBIDDEN_EXPLICIT_FIELD_LINES = [
+    "追踪人：用户字段",
+    "任务编号：公式，主键，自动生成",
+    "任务状态选项：待执行、进行中、已完成、已逾期、阻塞",
+    "是否卡点选项：是、否",
+]
 FORBIDDEN_ASK_PATTERNS = [
     "请提供 APP_SECRET",
     "请粘贴 APP_SECRET",
@@ -70,26 +52,25 @@ class SkillsPackageV6DocsTests(unittest.TestCase):
     def test_full_prompt_contains_complete_fixed_field_schema(self):
         text = FULL_PROMPT.read_text(encoding="utf-8")
 
-        self.assertIn("本包内置固定字段结构不可变", text)
+        self.assertIn("业务表字段结构以指定模板 Base 为准", text)
         self.assertIn("不要查找、索要或依赖任何历史版本包", text)
         self.assertIn("TEMPLATE_BASE_TOKEN=XDvOblimtagfxzsyD5ncxuWHn5I", text)
         self.assertIn("--without-content", text)
         self.assertIn("不要自行新建空 Base", text)
-        for line in REQUIRED_FIELD_LINES:
-            self.assertIn(line, text)
-        for option in REQUIRED_OPTIONS:
-            self.assertIn(option, text)
+        self.assertIn("字段结构以业务模板 Base 为准", text)
+        for line in FORBIDDEN_EXPLICIT_FIELD_LINES:
+            self.assertNotIn(line, text)
 
     def test_exec_config_contains_same_fixed_field_schema(self):
         text = EXEC_CONFIG.read_text(encoding="utf-8")
 
-        self.assertIn("本包内置固定字段结构不可变", text)
+        self.assertIn("业务表字段结构以模板 Base 为准", text)
         self.assertIn("不要查找、索要或依赖任何历史版本包", text)
         self.assertIn("copy_business_template_base", text)
         self.assertIn("verify_business_fields", text)
         self.assertIn("XDvOblimtagfxzsyD5ncxuWHn5I", text)
-        for line in REQUIRED_FIELD_LINES:
-            self.assertIn(line, text)
+        for line in FORBIDDEN_EXPLICIT_FIELD_LINES:
+            self.assertNotIn(line, text)
 
     def test_v6_docs_do_not_ask_user_for_generated_business_ids(self):
         combined = "\n".join(

@@ -34,7 +34,7 @@ Agent 安装 skills-package-v6
 -> Agent 验证并复制业务模板 Base
 -> Agent 从复制结果自动解析 AGENT_BASE_TOKEN
 -> Agent 按表名解析四张业务表 table_id
--> Agent 按本包内置固定字段清单校验四张业务表
+-> Agent 校验复制后的四张业务表字段结构
 -> Agent 写入运行配置
 -> Agent 创建 task-tracking 定时任务
 -> 管理员开始对话测试
@@ -58,14 +58,7 @@ TEMPLATE_BASE_TOKEN=XDvOblimtagfxzsyD5ncxuWHn5I
 任务巡检报告
 ```
 
-字段清单已经内置在本包文档中，安装时只读取 `skills-package-v6.zip` 内的文档，不要查找或索要任何历史版本包：
-
-```text
-高管追踪报告：feishu-boss-work/SKILL.md
-任务信息表：feishu-exec-task-extractor/references/field-mapping.md
-任务跟进记录表：feishu-exec-task-extractor/references/field-mapping.md
-任务巡检报告：feishu-exec-task-extractor/SKILL.md
-```
+字段结构以业务模板 Base 为准。复制后只校验，不手动新增、删除、改名或改类型。
 
 ## 给 Agent 的安装入口
 
@@ -80,7 +73,7 @@ full-install-prompt-v6.md
 ```text
 请解压并安装 skills-package-v6.zip。
 解压后不要自行推断流程，必须先读取包内 full-install-prompt-v6.md。
-按文档执行：先验证前置 Token 表，然后验证并复制业务模板 Base（TEMPLATE_BASE_TOKEN=XDvOblimtagfxzsyD5ncxuWHn5I），复制时只复制结构、不复制数据；从复制结果自动解析 AGENT_BASE_TOKEN，再按表名解析四张业务表 table_id，并按本包内置固定字段清单校验字段。
+按文档执行：先验证前置 Token 表，然后验证并复制业务模板 Base（TEMPLATE_BASE_TOKEN=XDvOblimtagfxzsyD5ncxuWHn5I），复制时只复制结构、不复制数据；从复制结果自动解析 AGENT_BASE_TOKEN，再按表名解析四张业务表 table_id，并校验复制后的字段结构。
 APP_SECRET 必须由你从已绑定应用、运行时安全配置、lark-cli profile 或前置配置中读取，不要在聊天里向我索要或要求我粘贴。
 不要向我索要 AGENT_BASE_TOKEN 或四个业务表 TABLE_ID，这些必须由你复制模板 Base 后按返回结果和表名自动解析。
 ```
@@ -104,6 +97,6 @@ APP_SECRET 必须由你从已绑定应用、运行时安全配置、lark-cli pro
 - 本包不发送授权卡片。
 - 本包只读取已验证的 Token 表。
 - 本包会复制指定业务模板 Base，并校验四张业务表。
-- 本包字段必须严格使用包内文档列出的固定字段清单，不得主观新增、删减、改名或改类型。
+- 本包字段结构以业务模板 Base 为准；复制后只校验，不得主观新增、删减、改名或改类型。
 - 本包不应向管理员索要 `AGENT_BASE_TOKEN` 或业务表 `TABLE_ID`。
 - 不要把真实 App Secret、Token、Base Token、Table ID、授权码、user token、refresh token、cron job id 写入 GitHub、skill 源码、zip 包源码、日志或公开文档。
