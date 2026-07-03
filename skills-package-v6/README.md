@@ -1,53 +1,90 @@
 # Skills Package v6
 
-This is the slim business package for executive tracking and task tracking.
+这是高管追踪和任务追踪的正式瘦身业务包。
 
-## Correct End-To-End Flow
+## 包含的业务入口
 
-```text
-Agent installs registry
--> Administrator manually configures Feishu app and Bitable
--> Administrator says "send an authorization card to XX"
--> Agent sends the authorization card
--> Member authorizes and token is written to Bitable
--> Agent verifies the token table
--> Agent installs skills-package-v6
--> Agent creates the task-tracking cron job
--> Administrator tests executive-tracking and task-tracking by conversation
-```
+- `executive-tracking`：高管追踪，对应 `feishu-boss-work/`
+- `task-tracking`：任务追踪，对应 `feishu-exec-task-extractor/`
 
-## Prerequisite
+## 前置条件
 
-Before installing this package, the standalone prerequisite package must already be installed, manually configured, and verified:
+安装本包前，必须先完成单独的前置授权包：
 
 ```text
-feishu-user-token-registry-package
+feishu-user-token-registry-package-v6.zip
 ```
 
-That prerequisite package is responsible for Feishu member OAuth authorization and token table verification. This v6 package only consumes an already verified member token table through runtime placeholders:
+前置包负责：
+
+- 复制 Token 表模板。
+- 开启 Token 表所有 workflows。
+- 发送成员授权卡片。
+- 让成员授权并写入 token。
+- 验证 `TOKEN_BASE_TOKEN` 和 `TOKEN_TABLE_ID`。
+
+## v6 业务包负责什么
+
+`skills-package-v6.zip` 不再要求管理员手动提供业务 Base 和四个业务表 ID。
+
+正确逻辑是：
 
 ```text
-TOKEN_BASE_TOKEN={TOKEN_BASE_TOKEN}
-TOKEN_TABLE_ID={TOKEN_TABLE_ID}
+Agent 安装 skills-package-v6
+-> Agent 自动创建业务 Base「高管追踪与任务追踪数据中枢」
+-> Agent 按 v5 字段清单创建四张业务表
+-> Agent 自动解析 AGENT_BASE_TOKEN
+-> Agent 按表名解析四张业务表 table_id
+-> Agent 写入运行配置
+-> Agent 创建 task-tracking 定时任务
+-> 管理员开始对话测试
 ```
 
-Do not install `feishu-user-token-registry` from this package.
+业务 Base：
 
-## Business Entries
+```text
+名称：高管追踪与任务追踪数据中枢
+创建方式：Agent 自动创建
+```
 
-- `executive-tracking`: executive tracking, implemented by `feishu-boss-work/`
-- `task-tracking`: task tracking, implemented by `feishu-exec-task-extractor/`
+必须按 v5 字段清单创建并自动解析的业务表：
 
-## Trigger Model
+```text
+高管追踪报告
+任务信息表
+任务跟进记录表
+任务巡检报告
+```
 
-- `executive-tracking`: conversation-triggered by default.
-- `task-tracking`: conversation-triggered for new tasks, plus a daily 21:00 Asia/Shanghai cron inspection created by the Agent during v6 installation.
+字段来源是 v5 原定义，不是 v6 主观设计：
 
-The cron job ID is generated at install time. Do not write a fixed cron job ID into this package.
+```text
+高管追踪报告：feishu-boss-work/SKILL.md
+任务信息表：feishu-exec-task-extractor/references/field-mapping.md
+任务跟进记录表：feishu-exec-task-extractor/references/field-mapping.md
+任务巡检报告：feishu-exec-task-extractor/SKILL.md
+```
 
-## Shared/Internal Dependencies
+## 给 Agent 的安装入口
 
-These directories are runtime dependencies for the two business entries. They are internal components, not user-selectable business skills:
+把 `skills-package-v6.zip` 发给 Agent 后，让它先读：
+
+```text
+full-install-prompt-v6.md
+```
+
+推荐提示词：
+
+```text
+请解压并安装 skills-package-v6.zip。
+解压后不要自行推断流程，必须先读取包内 full-install-prompt-v6.md。
+按文档执行：先验证前置 Token 表，然后自动创建业务 Base「高管追踪与任务追踪数据中枢」，按 v5 字段清单创建四张业务表，自动解析 AGENT_BASE_TOKEN 和四张业务表 table_id。
+不要向我索要 AGENT_BASE_TOKEN 或四个业务表 TABLE_ID，这些必须由你自动创建业务 Base 和业务表后按表名自动解析。
+```
+
+## shared/internal 依赖
+
+这些目录是两个业务入口的内部依赖，不作为用户可选业务 skill 展示：
 
 - `feishu-data-collector-v3/`
 - `feishu-calendar-collector/`
@@ -58,12 +95,12 @@ These directories are runtime dependencies for the two business entries. They ar
 - `feishu-mail-collector/`
 - `feishu-executive-comparison/`
 
-## Install Entry
+## 重要边界
 
-After giving `skills-package-v6.zip` to the Agent, ask it to read and execute:
-
-```text
-full-install-prompt-v6.md
-```
-
-Only two business entries should be exposed to users: executive tracking and task tracking.
+- 本包不包含 `feishu-user-token-registry`。
+- 本包不发送授权卡片。
+- 本包只读取已验证的 Token 表。
+- 本包会自动创建业务 Base 和四张业务表。
+- 本包字段必须来自 v5 原定义，不得主观新增、删减、改名或改类型。
+- 本包不应向管理员索要 `AGENT_BASE_TOKEN` 或业务表 `TABLE_ID`。
+- 不要把真实 App Secret、Token、Base Token、Table ID、授权码、user token、refresh token、cron job id 写入 GitHub、skill 源码、zip 包源码、日志或公开文档。
