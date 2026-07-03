@@ -56,6 +56,8 @@ REQUIRED_FIELD_LINES = [
 REQUIRED_OPTIONS = ["待执行", "进行中", "已完成", "已逾期", "阻塞", "是", "否"]
 FORBIDDEN_SUBJECTIVE_FIELDS = ["追踪周期", "报告摘要", "巡检摘要", "风险数量"]
 FORBIDDEN_ASK_PATTERNS = [
+    "请提供 APP_SECRET",
+    "请粘贴 APP_SECRET",
     "请提供 AGENT_BASE_TOKEN",
     "请提供 TABLE_ID_高管追踪报告",
     "请提供 TABLE_ID_任务信息表",
@@ -91,6 +93,7 @@ class SkillsPackageV6DocsTests(unittest.TestCase):
 
         self.assertIn("不得向管理员索要 `AGENT_BASE_TOKEN`", combined)
         self.assertIn("不得向管理员索要这四个 table_id", combined)
+        self.assertIn("不要在聊天里向管理员索要或要求粘贴 `APP_SECRET`", combined)
         for pattern in FORBIDDEN_ASK_PATTERNS:
             self.assertNotIn(pattern, combined)
 

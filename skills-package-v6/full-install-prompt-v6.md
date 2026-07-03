@@ -120,7 +120,7 @@ final_verify
 
 ## Step 4：解析应用凭证和 Token 表配置
 
-从前置 registry 的运行时记录、Token 表配置行、运行时配置或管理员明确输入读取：
+从已绑定的飞书应用 profile、应用运行时安全配置、前置 registry 运行时记录或 Token 表配置行读取：
 
 ```text
 APP_ID
@@ -131,7 +131,9 @@ TOKEN_TABLE_ID
 
 注意：
 
-- `APP_SECRET` 可以来自管理员控制的 Token 表配置行，这是预期设计。
+- `APP_SECRET` 是应用侧安全凭证，必须由 Agent 从已绑定应用、运行时安全配置、lark-cli profile 或前置配置中读取。
+- 不要在聊天里向管理员索要或要求粘贴 `APP_SECRET`。
+- 如果无法读取 `APP_SECRET`，停止安装并提示管理员先完成飞书应用绑定/运行时凭证配置；不要让管理员把 secret 发在对话里。
 - 这里不能要求管理员提供 `AGENT_BASE_TOKEN` 或业务表 `TABLE_ID`。
 - `AGENT_BASE_TOKEN` 和业务表 `TABLE_ID` 必须由后续业务 Base / 业务表自动创建结果生成。
 

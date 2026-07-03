@@ -79,6 +79,7 @@ full-install-prompt-v6.md
 请解压并安装 skills-package-v6.zip。
 解压后不要自行推断流程，必须先读取包内 full-install-prompt-v6.md。
 按文档执行：先验证前置 Token 表，然后自动创建业务 Base「高管追踪与任务追踪数据中枢」，按 v5 字段清单创建四张业务表，自动解析 AGENT_BASE_TOKEN 和四张业务表 table_id。
+APP_SECRET 必须由你从已绑定应用、运行时安全配置、lark-cli profile 或前置配置中读取，不要在聊天里向我索要或要求我粘贴。
 不要向我索要 AGENT_BASE_TOKEN 或四个业务表 TABLE_ID，这些必须由你自动创建业务 Base 和业务表后按表名自动解析。
 ```
 
