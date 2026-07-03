@@ -16,7 +16,7 @@ This skill is a prerequisite package for executive tracking and task tracking. I
 - Send the authorization card to a target member.
 - Let the administrator's Bitable/form automation capture the returned authorization URL, code, `user_access_token`, and `refresh_token`.
 
-This skill does not install executive tracking or task tracking. In v6, the Agent should create the runtime token table by copying the administrator-provided Bitable template, then enable every workflow copied with that template.
+This skill does not install executive tracking or task tracking. In v6, the Agent should create the runtime token table by copying the administrator-provided Bitable template, transfer ownership to the administrator, pause for the administrator to add the bot/application as a management collaborator, then enable every workflow copied with that template.
 
 ## Required Manual Setup
 
@@ -28,7 +28,7 @@ Before running this skill, the administrator must manually finish:
 - Publish the Feishu app.
 - Provide the member token storage Bitable template URL, new table name, and optional target folder URL.
 - Confirm Feishu app scopes, OAuth callback URL, app availability, and app publishing are manually configured.
-- Grant the bot/application management permission on the new token storage Bitable if the copied template does not already provide it.
+- After the Agent transfers ownership of the new token storage Bitable to the administrator, add the bot/application as a management collaborator on that new Bitable.
 
 ## Token Table Template Automation
 
@@ -37,6 +37,9 @@ When installing this package, the Agent should:
 - Read `install-prompt-v6.md` before taking action.
 - Copy the administrator-provided token Bitable template with the Feishu Drive copy-file API.
 - Get the copied token table `app_token`, `table_id`, and URL.
+- Automatically transfer ownership of the copied token Bitable to the administrator.
+- Pause and tell the administrator to manually add the bot/application as a management collaborator on the copied token Bitable.
+- Continue only after the administrator confirms the bot/application has management permission.
 - List all workflows in the copied token Bitable.
 - Enable every workflow by setting each workflow status to `Enable`.
 - List workflows again and verify every workflow status is `Enable`.
