@@ -177,6 +177,44 @@ TABLE_ID_任务巡检报告
 不得新增 追踪周期、报告摘要、巡检摘要、风险数量。
 ```
 
+## AGENT_ACTION: verify_business_workflows
+
+复制业务模板 Base 后，必须验证模板里的业务 workflow 是否随模板复制。
+
+执行顺序：
+
+```text
+列出复制后 Base 的 workflows。
+必须看到模板里的业务 workflow。
+如果存在 workflow，检查状态。
+如果 workflow 是 disabled，优先尝试 API 开启。
+如果 API 因权限限制无法开启，停止并提示管理员手动开启。
+管理员手动开启后，再次列出 workflows 并验证状态。
+```
+
+推荐读取 workflow：
+
+```bash
+lark-cli --profile {APP_ID} api GET /open-apis/bitable/v1/apps/{AGENT_BASE_TOKEN}/workflows --as bot
+```
+
+验证通过条件：
+
+```text
+复制后的业务 Base 可以列出 workflows。
+模板里的业务 workflow 已随模板复制。
+所有业务 workflow 都是 Enable/已启用状态。
+如果无法通过 API 开启，已由管理员手动开启并由 Agent 再次验证通过。
+```
+
+失败处理：
+
+```text
+如果 API 返回权限不足、OpenAPI 限制或 bot 无权管理 workflow，不要跳过，不要继续创建定时任务。
+停止并提示管理员在复制后的业务 Base 中手动开启全部业务 workflow。
+管理员确认“已开启”后，再次列出 workflows 并验证状态。
+```
+
 ## AGENT_ACTION: transfer_business_base_owner
 
 如果能解析 `USER_OPEN_ID`，可执行所有者转让：
@@ -312,6 +350,7 @@ task-tracking cron：dry-run 或手动触发一次每日巡检。
 - `AGENT_BASE_TOKEN` 由复制结果自动解析。
 - 四张业务表 table_id 已按表名自动解析。
 - 四张业务表字段结构已按模板复制结果校验通过。
+- 业务模板 workflow 已随 Base 复制并验证为已启用。
 - shared/internal collector 存在。
 - 高管追踪可写入 `高管追踪报告`。
 - 任务追踪可写入 `任务信息表`、`任务跟进记录表`、`任务巡检报告`。

@@ -111,6 +111,20 @@ class SkillsPackageV6DocsTests(unittest.TestCase):
         self.assertIn("TASK_TRACKING_CRON_TZ=Asia/Shanghai", combined)
         self.assertIn("TASK_TRACKING_CRON_TIME_DESC=北京时间每天 21:00", combined)
 
+    def test_business_template_workflows_are_verified_after_copy(self):
+        combined = "\n".join(
+            path.read_text(encoding="utf-8") for path in [FULL_PROMPT, EXEC_CONFIG, README]
+        )
+
+        self.assertIn("verify_business_workflows", combined)
+        self.assertIn("验证业务模板 workflow", combined)
+        self.assertIn("列出复制后 Base 的 workflows", combined)
+        self.assertIn("模板里的业务 workflow 已随模板复制", combined)
+        self.assertIn("所有业务 workflow 都是 Enable/已启用状态", combined)
+        self.assertIn("API 因权限限制无法开启", combined)
+        self.assertIn("管理员手动开启后", combined)
+        self.assertIn("/open-apis/bitable/v1/apps/{AGENT_BASE_TOKEN}/workflows", combined)
+
 
 if __name__ == "__main__":
     unittest.main()

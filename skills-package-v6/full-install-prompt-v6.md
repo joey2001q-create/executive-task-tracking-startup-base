@@ -113,6 +113,7 @@ verify_credentials
 verify_registry_token_table
 setup_business_base
 resolve_business_table_ids
+verify_business_workflows
 write_runtime_config
 verify_collectors
 configure_task_cron
@@ -286,6 +287,44 @@ lark-cli --profile {APP_ID} base +field-list --base-token {AGENT_BASE_TOKEN} --t
 
 如果缺表或字段异常，停止安装，报告缺失项或异常项。不要向管理员索要 table_id，也不要手工创建字段替代。
 
+## Step 8.5：验证业务模板 workflow
+
+复制业务模板 Base 后，必须验证模板里的业务 workflow 是否随模板复制。
+
+执行顺序：
+
+```text
+1. 列出复制后 Base 的 workflows。
+2. 必须看到模板里的业务 workflow。
+3. 如果存在 workflow，检查状态。
+4. 如果 workflow 是 disabled，优先尝试 API 开启。
+5. 如果 API 因权限限制无法开启，停止并提示管理员手动开启。
+6. 管理员手动开启后，再次列出 workflows 并验证状态。
+```
+
+推荐执行方式：
+
+```bash
+lark-cli --profile {APP_ID} api GET /open-apis/bitable/v1/apps/{AGENT_BASE_TOKEN}/workflows --as bot
+```
+
+如果发现 disabled workflow，先尝试通过 API 更新为 Enable。若接口返回权限不足、OpenAPI 限制或 bot 无权管理 workflow，不要跳过，不要继续创建定时任务，必须停止并提示：
+
+```text
+业务 Base 已复制，但存在未启用的 workflow。
+请管理员在复制后的业务 Base 中手动开启全部业务 workflow。
+开启完成后告诉我“已开启”，我会重新验证 workflow 状态。
+```
+
+验证通过条件：
+
+```text
+复制后的业务 Base 可以列出 workflows。
+模板里的业务 workflow 已随模板复制。
+所有业务 workflow 都是 Enable/已启用状态。
+如果无法通过 API 开启，已由管理员手动开启并由 Agent 再次验证通过。
+```
+
 ## Step 9：解析 BOSS_OPEN_ID
 
 `BOSS_OPEN_ID` 优先取当前安装/测试对话中的管理员 open_id，或从前置 Token 表中已授权的老板/管理员记录解析。
@@ -390,6 +429,7 @@ executive-tracking 和 task-tracking 已安装。
 AGENT_BASE_TOKEN 已从复制结果自动解析。
 四张业务表 table_id 已按表名自动解析并验证。
 四张业务表字段结构已按模板复制结果校验通过。
+业务模板 workflow 已随 Base 复制并验证为已启用。
 shared/internal collector 已安装。
 task-tracking 定时任务已创建并记录 job id。
 可以开始通过对话测试高管追踪和任务追踪。

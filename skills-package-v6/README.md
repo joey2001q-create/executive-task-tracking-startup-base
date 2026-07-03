@@ -97,6 +97,7 @@ APP_SECRET 必须由你从已绑定应用、运行时安全配置、lark-cli pro
 - 本包不发送授权卡片。
 - 本包只读取已验证的 Token 表。
 - 本包会复制指定业务模板 Base，并校验四张业务表。
+- 本包会验证业务模板 workflow 是否随 Base 复制；如未启用，先尝试 API 开启，API 受限时要求管理员手动开启后再验证。
 - 本包字段结构以业务模板 Base 为准；复制后只校验，不得主观新增、删减、改名或改类型。
 - 本包不应向管理员索要 `AGENT_BASE_TOKEN` 或业务表 `TABLE_ID`。
 - task-tracking 定时任务必须使用北京时间，时区显式设置为 `Asia/Shanghai`。
